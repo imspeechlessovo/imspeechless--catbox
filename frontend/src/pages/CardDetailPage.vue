@@ -30,17 +30,27 @@
             <div class="text-center"><p class="text-2xl font-light text-slate-400">{{ card.totalDownloads }}</p><p class="text-xs text-slate-400">下载</p></div>
           </div>
 
-          <!-- Actions -->
-          <div class="flex gap-3 pt-2">
+          <!-- Actions (require auth) -->
+          <div v-if="canInteract" class="flex gap-3 pt-2">
             <button @click="handleLike" :disabled="liking"
               class="flex-1 py-3 rounded-xl text-sm font-medium bg-rose-50 text-rose-500 hover:bg-rose-100 disabled:opacity-50 transition-all">
-              {{ liking ? '...' : '👍 点赞' }}
+              {{ liking ? '...' : '❤️ 点赞' }}
             </button>
             <a :href="'/api/cards/' + card.id + '/download'"
               @click="handleDownload"
               class="flex-1 py-3 rounded-xl text-sm font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all text-center">
-              ⬇ 下载原图
+              ⬇️ 下载原图
             </a>
+          </div>
+
+          <!-- Not authed -->
+          <div v-else class="text-center py-3">
+            <p class="text-sm text-slate-400">
+              想互动？先
+              <router-link to="/gate" class="text-violet-500 hover:underline">回答几个小问题</router-link>
+              或
+              <router-link to="/author/login" class="text-violet-500 hover:underline">作者登录</router-link>
+            </p>
           </div>
 
           <p v-if="likeMsg" class="text-xs text-center" :class="likeOk ? 'text-rose-400' : 'text-slate-400'">{{ likeMsg }}</p>
@@ -58,18 +68,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getCard, likeCard, type CardDetail } from '../api'
+import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const card = ref<CardDetail | null>(null)
 const loading = ref(true)
 const liking = ref(false)
 const likeMsg = ref('')
 const likeOk = ref(false)
 
+const canInteract = computed(() => authStore.isAuthor || authStore.isVisitorPassed)
+
 onMounted(async () => {
+  await authStore.checkAuth()
   const id = Number(route.params.id)
   if (isNaN(id)) { loading.value = false; return }
   try { card.value = await getCard(id) } catch {}

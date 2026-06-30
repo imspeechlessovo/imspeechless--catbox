@@ -1,5 +1,31 @@
 <template>
   <div class="min-h-screen">
+    <!-- === Login buttons: top-right === -->
+    <div class="fixed top-4 right-4 z-50 flex items-center gap-2">
+      <template v-if="!authStore.isAuthor && !authStore.isVisitorPassed">
+        <router-link to="/gate"
+          class="px-4 py-2 rounded-full text-xs font-medium bg-white/70 backdrop-blur text-slate-500 hover:text-slate-700 hover:bg-white/90 transition-all shadow-sm">
+          粉丝登录
+        </router-link>
+        <router-link to="/author/login"
+          class="px-4 py-2 rounded-full text-xs font-medium bg-white/70 backdrop-blur text-slate-500 hover:text-slate-700 hover:bg-white/90 transition-all shadow-sm">
+          作者登录
+        </router-link>
+      </template>
+      <template v-else>
+        <span v-if="authStore.isAuthor" class="text-xs text-slate-500 bg-white/70 backdrop-blur px-3 py-1.5 rounded-full">
+          作者：{{ authStore.authorDisplayName }}
+        </span>
+        <span v-else-if="authStore.isVisitorPassed" class="text-xs text-slate-500 bg-white/70 backdrop-blur px-3 py-1.5 rounded-full">
+          已通过门禁
+        </span>
+        <button v-if="authStore.isAuthor || authStore.isVisitorPassed" @click="handleLogout"
+          class="px-3 py-1.5 rounded-full text-xs font-medium bg-white/70 backdrop-blur text-slate-400 hover:text-rose-500 transition-all shadow-sm">
+          退出
+        </button>
+      </template>
+    </div>
+
     <!-- === Section 1: Countdown === -->
     <div class="min-h-screen flex flex-col items-center justify-center px-4 py-12">
       <div class="w-full max-w-lg mx-auto text-center space-y-8">
@@ -11,18 +37,7 @@
         <CountdownDisplay v-if="countdownData" :release-time-str="countdownData.releaseTime" :server-time-str="countdownData.serverTime" />
         <CountdownDisplay v-else />
 
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <router-link to="/gate"
-            class="w-full sm:w-auto px-8 py-3 rounded-xl text-sm font-medium bg-slate-800 text-white hover:bg-slate-700 transition-all duration-200 shadow-sm text-center">
-            回答问题，进入留言区
-          </router-link>
-          <router-link to="/author/login"
-            class="w-full sm:w-auto px-8 py-3 rounded-xl text-sm font-medium glass text-slate-600 hover:text-slate-800 transition-all duration-200 hover:shadow-sm text-center">
-            作者登录
-          </router-link>
-        </div>
-
-        <p class="text-xs text-slate-300 pt-8 animate-bounce">↓ 向下滑动查看角色卡排行榜 ↓</p>
+        <p class="text-xs text-slate-300 pt-8 animate-bounce">↓ 向下滑动查看角色卡排行 ↓</p>
       </div>
     </div>
 
@@ -46,7 +61,7 @@
           </button>
         </div>
 
-        <div v-if="loading" class="text-center py-12"><p class="text-slate-400 text-sm">加载中...</p></div>
+        <div v-if="loadingCards" class="text-center py-12"><p class="text-slate-400 text-sm">加载中...</p></div>
 
         <div v-else class="space-y-3">
           <div v-for="item in items" :key="item.id"
@@ -86,43 +101,206 @@
         </div>
       </div>
     </div>
+
+    <!-- === Section 3: Message Wall === -->
+    <div class="px-4 py-12">
+      <div class="w-full max-w-2xl mx-auto">
+        <h2 class="text-xl font-light text-slate-700 text-center mb-2">留言板</h2>
+        <p class="text-xs text-slate-400 text-center mb-8">留下你想说的话</p>
+
+        <!-- Posting form (authed only) -->
+        <div v-if="canPost" class="glass rounded-2xl p-4 md:p-6 mb-8 shadow-sm">
+          <form @submit.prevent="submitMessage" class="space-y-4">
+            <input
+              v-model="msgNickname"
+              type="text"
+              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white/60 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300 transition-all"
+              placeholder="你的昵称（最多20字）"
+              maxlength="20"
+              :disabled="submittingMsg"
+            />
+            <textarea
+              v-model="msgContent"
+              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white/60 text-sm text-slate-700 placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300 transition-all"
+              rows="3"
+              placeholder="写下你想说的话（最多200字）"
+              maxlength="200"
+              :disabled="submittingMsg"
+            ></textarea>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">{{ msgContent.length }}/200</span>
+              <button type="submit" :disabled="submittingMsg || !msgNickname.trim() || !msgContent.trim()"
+                class="px-6 py-2 rounded-xl text-sm font-medium bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50 transition-all shadow-sm">
+                {{ submittingMsg ? '发送中...' : '留言' }}
+              </button>
+            </div>
+          </form>
+          <p v-if="msgError" class="text-sm text-rose-500 mt-3">{{ msgError }}</p>
+        </div>
+
+        <div v-else class="text-center py-4 mb-4">
+          <p class="text-sm text-slate-400">
+            想留言？先
+            <router-link to="/gate" class="text-violet-500 hover:underline">回答几个小问题</router-link>
+            或
+            <router-link to="/author/login" class="text-violet-500 hover:underline">作者登录</router-link>
+          </p>
+        </div>
+
+        <!-- Messages -->
+        <div v-if="loadingMsgs" class="text-center py-8"><p class="text-slate-400 text-sm">加载中...</p></div>
+        <div v-else class="space-y-4">
+          <div v-for="msg in allMessages" :key="msg.type + '-' + msg.id">
+            <MessageCard :message="msg" :is-author="authStore.isAuthor" @pin="handlePin" @delete="handleDelete" />
+          </div>
+          <div v-if="allMessages.length === 0" class="text-center py-12">
+            <p class="text-slate-400 text-sm">还没有留言，来做第一个留言的人吧</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === Section 4: Author Tools === -->
+    <div v-if="authStore.isAuthor" class="px-4 py-12 bg-white/30">
+      <div class="w-full max-w-2xl mx-auto text-center">
+        <h2 class="text-lg font-light text-slate-600 mb-6">作者工具</h2>
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+          <router-link to="/create"
+            class="px-8 py-4 rounded-2xl glass text-slate-700 hover:text-slate-900 hover:shadow-md transition-all">
+            <span class="text-2xl mr-2">+</span> 创建角色卡
+          </router-link>
+          <router-link to="/author/questions"
+            class="px-8 py-4 rounded-2xl glass text-slate-700 hover:text-slate-900 hover:shadow-md transition-all">
+            ✏️ 修改粉丝登录问题
+          </router-link>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import CountdownDisplay from '../components/CountdownDisplay.vue'
+import MessageCard from '../components/MessageCard.vue'
 import { useAuthStore } from '../stores/auth'
-import { getCountdown, getCards, type CardListItem } from '../api'
+import {
+  getCountdown, getCards, getMessages, postMessage, deleteMessage, togglePin,
+  authorLogout, visitorLogout,
+  type CardListItem, type MessageItem, type AuthorMessageItem
+} from '../api'
 
 const authStore = useAuthStore()
 
+// Countdown
 const countdownData = ref<{ releaseTime: string; serverTime: string } | null>(null)
+
+// Cards
 const tabs = [{ key: 'total', label: '总榜' }, { key: 'daily', label: '日榜' }, { key: 'weekly', label: '周榜' }]
 const rank = ref('total')
 const page = ref(1)
 const items = ref<CardListItem[]>([])
 const total = ref(0)
-const loading = ref(true)
+const loadingCards = ref(true)
 const totalPages = ref(0)
+
+// Messages
+const loadingMsgs = ref(true)
+const submittingMsg = ref(false)
+const msgError = ref('')
+const msgNickname = ref('')
+const msgContent = ref('')
+const visitorMessages = ref<MessageItem[]>([])
+const authorMessages = ref<AuthorMessageItem[]>([])
+
+const canPost = computed(() => authStore.isAuthor || authStore.isVisitorPassed)
+
+const allMessages = computed(() => [...authorMessages.value, ...visitorMessages.value])
 
 onMounted(async () => {
   await authStore.checkAuth()
   try { countdownData.value = await getCountdown() } catch {}
   await loadCards()
+  await loadMessages()
 })
 
+// --- Cards ---
 async function loadCards() {
-  loading.value = true
+  loadingCards.value = true
   try {
     const data = await getCards(rank.value, page.value, 20)
     items.value = data.items
     total.value = data.total
     totalPages.value = Math.ceil(data.total / data.limit)
   } catch { items.value = [] }
-  loading.value = false
+  loadingCards.value = false
 }
 
 function switchTab(key: string) { rank.value = key; page.value = 1; loadCards() }
 function changePage(p: number) { page.value = p; loadCards() }
+
+// --- Messages ---
+async function loadMessages() {
+  loadingMsgs.value = true
+  try {
+    const data = await getMessages()
+    visitorMessages.value = data.messages || []
+    authorMessages.value = data.authorMessages || []
+  } catch {}
+  loadingMsgs.value = false
+}
+
+async function submitMessage() {
+  msgError.value = ''
+  if (!msgNickname.value.trim() || !msgContent.value.trim()) return
+  submittingMsg.value = true
+  try {
+    const msg = await postMessage(msgNickname.value.trim(), msgContent.value.trim())
+    visitorMessages.value.unshift(msg)
+    msgNickname.value = ''
+    msgContent.value = ''
+  } catch (err: unknown) {
+    msgError.value = err instanceof Error ? err.message : '留言失败'
+  } finally {
+    submittingMsg.value = false
+  }
+}
+
+async function handlePin(msg: MessageItem | AuthorMessageItem) {
+  try {
+    const result = await togglePin(msg.id)
+    if (msg.type === 'visitor') {
+      const m = visitorMessages.value.find(m => m.id === msg.id)
+      if (m) (m as any).pinned = result.pinned
+    } else {
+      const m = authorMessages.value.find(m => m.id === msg.id)
+      if (m) (m as any).pinned = result.pinned
+    }
+    visitorMessages.value = [...visitorMessages.value]
+    authorMessages.value = [...authorMessages.value]
+  } catch (err: unknown) {
+    alert(err instanceof Error ? err.message : '操作失败')
+  }
+}
+
+async function handleDelete(msg: MessageItem | AuthorMessageItem) {
+  if (!confirm('确定删除这条留言？')) return
+  try {
+    await deleteMessage(msg.id)
+    if (msg.type === 'visitor') {
+      visitorMessages.value = visitorMessages.value.filter(m => m.id !== msg.id)
+    } else {
+      authorMessages.value = authorMessages.value.filter(m => m.id !== msg.id)
+    }
+  } catch (err: unknown) {
+    alert(err instanceof Error ? err.message : '删除失败')
+  }
+}
+
+async function handleLogout() {
+  try {
+    if (authStore.isAuthor) { await authorLogout(); authStore.clearAuthor(); }
+    else if (authStore.isVisitorPassed) { await visitorLogout(); authStore.isVisitorPassed = false; }
+  } catch {}
+}
 </script>

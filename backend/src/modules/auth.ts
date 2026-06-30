@@ -1,7 +1,9 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { AuthRequest, visitorAuth, authorAuth } from '../auth/middleware';
 
 export const authRouter = Router();
+
+authRouter.post('/visitor-logout', (_req, res) => { res.clearCookie('visitor_token', { path: '/' }); res.json({ ok: true }); });
 
 authRouter.get('/status', visitorAuth, authorAuth, (req: AuthRequest, res) => {
   res.json({

@@ -26,11 +26,7 @@ const router = createRouter({
     {
       path: '/card/:id', name: 'card-detail', component: () => import('../pages/CardDetailPage.vue') }, {
     path: '/create', name: 'create-card', component: () => import('../pages/CreateCardPage.vue') }, {
-    path: '/manage/:id', name: 'manage-card', component: () => import('../pages/ManageCardPage.vue') }, {
-    path: '/author/dashboard',
-      name: 'author-dashboard',
-      component: () => import('../pages/AuthorDashboardPage.vue'),
-    },
+    path: '/manage/:id', name: 'manage-card', component: () => import('../pages/ManageCardPage.vue') }
   ],
 })
 

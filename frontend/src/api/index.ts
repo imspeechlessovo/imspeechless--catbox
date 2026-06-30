@@ -53,6 +53,7 @@ export interface MessageItem {
   id: number;
   nickname: string;
   content: string;
+  pinned?: boolean;
   createdAt: string;
   type: 'visitor';
 }
@@ -82,6 +83,14 @@ export function postMessage(nickname: string, content: string) {
   });
 }
 
+export function deleteMessage(id: number) {
+  return request<{ ok: boolean }>('/messages/' + id, { method: 'DELETE' });
+}
+
+export function togglePin(id: number) {
+  return request<{ ok: boolean; pinned: boolean }>('/messages/' + id + '/pin', { method: 'PATCH' });
+}
+
 // Author login / logout
 export function authorLogin(username: string, password: string) {
   return request<{ ok: boolean; author: { displayName: string; username: string } }>('/author/login', {
@@ -92,6 +101,10 @@ export function authorLogin(username: string, password: string) {
 
 export function authorLogout() {
   return request<{ ok: boolean }>('/author/logout', { method: 'POST' });
+}
+
+export function visitorLogout() {
+  return request<{ ok: boolean }>('/auth/visitor-logout', { method: 'POST' });
 }
 
 // Author dashboard - author messages

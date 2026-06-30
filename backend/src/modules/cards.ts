@@ -9,7 +9,7 @@ import {
   queryAll, queryOne, insertNum, updateRow, deleteRow, clearTable,
   CardRow, LikeRow, DownloadRow,
 } from '../database';
-import { rateLimit, visitorAuth, authorAuth, requireAuthor } from '../auth/middleware';
+import { rateLimit, visitorAuth, authorAuth, requireAuthor, requireAccess } from '../auth/middleware';
 
 export const cardsRouter = Router();
 
@@ -241,7 +241,7 @@ cardsRouter.get('/:id', (req: Request, res: Response) => {
 });
 
 // ===== Like =====
-cardsRouter.post('/:id/like', rateLimit(1000, 20), (req: Request, res: Response) => {
+cardsRouter.post('/:id/like', rateLimit(1000, 20), visitorAuth, authorAuth, requireAccess, (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
@@ -278,7 +278,7 @@ cardsRouter.post('/:id/like', rateLimit(1000, 20), (req: Request, res: Response)
 });
 
 // ===== Download =====
-cardsRouter.get('/:id/download', (req: Request, res: Response) => {
+cardsRouter.get('/:id/download', visitorAuth, authorAuth, requireAccess, (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });

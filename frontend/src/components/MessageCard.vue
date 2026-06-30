@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div
     class="rounded-2xl p-4 md:p-5 shadow-sm transition-all duration-200 hover:shadow-md"
     :class="cardClass"
@@ -25,15 +25,33 @@
 
     <!-- Footer -->
     <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
-      <span v-if="message.type === 'visitor'" class="text-xs text-slate-400">
-        {{ visitorMsg?.nickname || '匿名' }}
-      </span>
-      <span v-else class="text-xs text-slate-400">
-        {{ formatTime(message.createdAt) }}
-      </span>
-      <span v-if="message.type === 'visitor'" class="text-xs text-slate-400">
-        {{ formatTime(message.createdAt) }}
-      </span>
+      <div class="flex items-center gap-3">
+        <span v-if="message.type === 'visitor'" class="text-xs text-slate-400">
+          {{ visitorMsg?.nickname || '匿名' }}
+        </span>
+        <span class="text-xs text-slate-400">
+          {{ formatTime(message.createdAt) }}
+        </span>
+      </div>
+
+      <!-- Author actions -->
+      <div v-if="isAuthor" class="flex items-center gap-2">
+        <button
+          @click="$emit('pin', message)"
+          class="text-xs px-2 py-1 rounded-lg transition-colors"
+          :class="isPinned ? 'bg-amber-50 text-amber-500 hover:bg-amber-100' : 'text-slate-300 hover:text-amber-500 hover:bg-amber-50'"
+          :title="isPinned ? '取消置顶' : '置顶'"
+        >
+          📌
+        </button>
+        <button
+          @click="$emit('delete', message)"
+          class="text-xs px-2 py-1 rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+          title="强制删除"
+        >
+          🗑
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -44,11 +62,18 @@ import type { MessageItem, AuthorMessageItem } from '../api'
 
 const props = defineProps<{
   message: MessageItem | AuthorMessageItem
+  isAuthor?: boolean
+}>()
+
+defineEmits<{
+  pin: [message: MessageItem | AuthorMessageItem]
+  delete: [message: MessageItem | AuthorMessageItem]
 }>()
 
 const visitorMsg = computed(() => props.message.type === 'visitor' ? props.message as MessageItem : null)
 const authorMsg = computed(() => props.message.type === 'author' ? props.message as AuthorMessageItem : null)
 
+const isPinned = computed(() => props.message.type === 'visitor' ? !!(props.message as MessageItem).pinned : !!(props.message as AuthorMessageItem).pinned)
 const cardClass = computed(() => {
   if (props.message.type === 'author') {
     return 'glass-strong border-l-4 border-l-violet-300'

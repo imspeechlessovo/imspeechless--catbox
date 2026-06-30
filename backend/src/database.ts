@@ -24,7 +24,7 @@ export interface VisitorSessionRow {
   passed: number; expires_at: string; created_at: string;
 }
 export interface MessageRow {
-  id: number; nickname: string; content: string; visible: number;
+  id: number; nickname: string; content: string; visible: number; pinned: number;
   ip_hash: string; user_agent: string | null; created_at: string; updated_at: string;
 }
 export interface AuthorMessageRow {

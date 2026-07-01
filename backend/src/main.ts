@@ -19,7 +19,11 @@ console.log('✅ Database ready');
 
 const app = express();
 
-app.use(cors({ origin: config.frontendUrl, credentials: true }));
+// CORS: in dev allow frontend dev server; in prod same-origin
+app.use(cors({
+  origin: config.isProduction ? true : config.frontendUrl,
+  credentials: true,
+}));
 app.use(express.json({ limit: '10kb' }));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 app.use(cookieParser(config.cookieSecret));
@@ -36,6 +40,15 @@ app.use('/api/stats', statsRouter);
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, serverTime: new Date().toISOString() });
 });
+
+// Production: serve built frontend static files
+if (config.isProduction) {
+  const frontendDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
+  app.use(express.static(frontendDist));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
 
 app.use((_req, res) => { res.status(404).json({ error: 'Not found' }); });
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

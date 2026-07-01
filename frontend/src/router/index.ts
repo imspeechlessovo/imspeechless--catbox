@@ -26,7 +26,17 @@ const router = createRouter({
     {
       path: '/card/:id', name: 'card-detail', component: () => import('../pages/CardDetailPage.vue') }, {
     path: '/create', name: 'create-card', component: () => import('../pages/CreateCardPage.vue') }, {
-    path: '/manage/:id', name: 'manage-card', component: () => import('../pages/ManageCardPage.vue') }
+    path: '/manage/:id', name: 'manage-card', component: () => import('../pages/ManageCardPage.vue') },
+    {
+      path: '/author/questions',
+      name: 'author-questions',
+      component: () => import('../pages/AuthorQuestionsPage.vue'),
+    },
+    {
+      path: '/stats',
+      name: 'stats',
+      component: () => import('../pages/StatsPage.vue'),
+    },
   ],
 })
 

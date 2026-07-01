@@ -60,7 +60,7 @@ gateRouter.post('/verify', rateLimit(60_000, 10), async (req: Request, res: Resp
     res.cookie('visitor_token', jwtToken, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: config.isProduction,
+      secure: false,
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/',
     });

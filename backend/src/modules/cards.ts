@@ -14,6 +14,8 @@ export const cardsRouter = Router();
 
 const UPLOAD_DIR = path.resolve(__dirname, '..', '..', 'uploads');
 const THUMB_DIR = path.join(UPLOAD_DIR, 'thumbs');
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+fs.mkdirSync(THUMB_DIR, { recursive: true });
 
 // Multer config
 const storage = multer.memoryStorage();

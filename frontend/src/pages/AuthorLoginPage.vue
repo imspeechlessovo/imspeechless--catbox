@@ -1,60 +1,59 @@
-﻿<template>
-  <div class="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-    <div class="w-full max-w-sm mx-auto">
-      <router-link to="/" class="inline-flex items-center text-sm text-slate-400 hover:text-slate-600 mb-8 transition-colors">
-        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-        </svg>
+<template>
+  <div style="background: var(--page-bg); min-height: 100vh; transition: background var(--transition-speed) ease;" class="flex flex-col items-center justify-center px-4 py-12">
+    <div class="w-full max-w-md mx-auto">
+      <router-link to="/" class="inline-flex items-center text-sm mb-8 transition-colors" :style="{ color: 'var(--text-secondary)' }">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
         返回首页
       </router-link>
 
-      <div class="glass rounded-2xl p-6 md:p-8 shadow-sm">
-        <h2 class="text-xl font-light text-slate-700 text-center mb-6">
-          作者登录
-        </h2>
+      <div class="glass rounded-2xl p-6 md:p-8">
+        <div class="text-center mb-6">
+          <span class="text-4xl">✍️</span>
+          <h2 class="text-xl font-light mt-3" :style="{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }">作者登录</h2>
+          <p class="text-xs mt-1" :style="{ color: 'var(--text-muted)' }">牛油果本果请进~</p>
+        </div>
 
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-slate-600 mb-1.5">用户名</label>
-            <input
-              v-model="username"
-              type="text"
-              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white/60
-                     text-sm text-slate-700 placeholder-slate-300
-                     focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300
-                     transition-all duration-200"
-              placeholder="请输入用户名"
-              :disabled="submitting"
-            />
+            <label class="block text-sm font-medium mb-1" :style="{ color: 'var(--text-primary)' }">账号</label>
+            <input v-model="username" type="text"
+              class="w-full px-4 py-2.5 rounded-xl text-sm transition-all outline-none"
+              :style="{
+                background: 'var(--input-bg)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--input-border)',
+                borderRadius: 'var(--card-radius)',
+                fontFamily: 'var(--font-body)',
+              }"
+              placeholder="输入作者账号"
+              @focus="(e: any) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; }"
+              @blur="(e: any) => { e.target.style.borderColor = 'var(--input-border)'; e.target.style.boxShadow = 'none'; }" />
           </div>
-
           <div>
-            <label class="block text-sm font-medium text-slate-600 mb-1.5">密码</label>
-            <input
-              v-model="password"
-              type="password"
-              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white/60
-                     text-sm text-slate-700 placeholder-slate-300
-                     focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300
-                     transition-all duration-200"
-              placeholder="请输入密码"
-              :disabled="submitting"
-            />
+            <label class="block text-sm font-medium mb-1" :style="{ color: 'var(--text-primary)' }">密码</label>
+            <input v-model="password" type="password"
+              class="w-full px-4 py-2.5 rounded-xl text-sm transition-all outline-none"
+              :style="{
+                background: 'var(--input-bg)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--input-border)',
+                borderRadius: 'var(--card-radius)',
+                fontFamily: 'var(--font-body)',
+              }"
+              placeholder="输入密码"
+              @focus="(e: any) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; }"
+              @blur="(e: any) => { e.target.style.borderColor = 'var(--input-border)'; e.target.style.boxShadow = 'none'; }" />
           </div>
-
-          <div v-if="errorMsg" class="text-sm text-rose-500 text-center py-1">
-            {{ errorMsg }}
-          </div>
-
-          <button
-            type="submit"
-            :disabled="submitting || !username.trim() || !password"
-            class="w-full py-3 rounded-xl text-sm font-medium
-                   bg-slate-800 text-white hover:bg-slate-700
-                   disabled:opacity-50 disabled:cursor-not-allowed
-                   transition-all duration-200 shadow-sm"
-          >
-            {{ submitting ? '登录中...' : '登录' }}
+          <p v-if="error" class="text-sm text-center" :style="{ color: 'var(--danger-text)' }">{{ error }}</p>
+          <button type="submit" :disabled="loading"
+            class="w-full py-3 rounded-xl text-sm font-medium disabled:opacity-40 transition-all shadow-lg cursor-pointer"
+            :style="{
+              background: 'var(--accent)',
+              color: '#FFFFFF',
+              borderRadius: 'var(--card-radius)',
+              boxShadow: '0 4px 12px var(--accent-glow)',
+            }">
+            {{ loading ? '登录中...' : '登录' }}
           </button>
         </form>
       </div>
@@ -73,22 +72,24 @@ const authStore = useAuthStore()
 
 const username = ref('')
 const password = ref('')
-const submitting = ref(false)
-const errorMsg = ref('')
+const error = ref('')
+const loading = ref(false)
 
 async function handleLogin() {
-  errorMsg.value = ''
-  if (!username.value.trim() || !password.value) return
-
-  submitting.value = true
+  error.value = ''
+  if (!username.value.trim() || !password.value.trim()) {
+    error.value = '请输入账号和密码'
+    return
+  }
+  loading.value = true
   try {
     const result = await authorLogin(username.value.trim(), password.value)
     authStore.setAuthor(result.author.displayName)
-    router.push('/author/dashboard')
+    router.push('/')
   } catch (err: unknown) {
-    errorMsg.value = err instanceof Error ? err.message : '登录失败'
+    error.value = err instanceof Error ? err.message : '登录失败'
   } finally {
-    submitting.value = false
+    loading.value = false
   }
 }
 </script>

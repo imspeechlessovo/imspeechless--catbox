@@ -235,24 +235,13 @@ export function likeCard(id: number) {
   return request<{ ok: boolean; totalLikes: number }>('/cards/' + id + '/like', { method: 'POST' });
 }
 
-export function verifyCardPassword(id: number, password: string) {
-  return request<{ ok: boolean; token: string }>('/cards/' + id + '/manage', {
-    method: 'POST',
-    body: JSON.stringify({ password }),
-  });
-}
-
-export function updateCard(id: number, data: Record<string, unknown>, token: string) {
+export function updateCard(id: number, data: Record<string, unknown>) {
   return request<{ id: number; name: string; intro: string; tags: string[] }>('/cards/' + id, {
     method: 'PUT',
     body: JSON.stringify(data),
-    headers: { 'X-Manage-Token': token, 'Content-Type': 'application/json' },
   });
 }
 
-export function deleteCard(id: number, token: string) {
-  return request<{ ok: boolean }>('/cards/' + id, {
-    method: 'DELETE',
-    headers: { 'X-Manage-Token': token, 'Content-Type': 'application/json' },
-  });
+export function deleteCard(id: number) {
+  return request<{ ok: boolean }>('/cards/' + id, { method: 'DELETE' });
 }

@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import * as bcrypt from 'bcryptjs';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
@@ -20,7 +19,7 @@ const THUMB_DIR = path.join(UPLOAD_DIR, 'thumbs');
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/png', 'image/jpeg', 'image/webp'];
     if (allowed.includes(file.mimetype)) {
@@ -57,18 +56,15 @@ function incrementDailyLikes(ip: string): void {
   dailyLikeMap.set(ip, (dailyLikeMap.get(ip) || 0) + 1);
 }
 
-// ===== Create card =====
+// ===== Create card (author only, no management password) =====
 cardsRouter.post('/', visitorAuth, authorAuth, requireAuthor, upload.single('image'), async (req: Request, res: Response) => {
   try {
-    const { name, intro, tags, password } = req.body as Record<string, string>;
+    const { name, intro, tags } = req.body as Record<string, string>;
     const file = req.file;
 
     const cardName = String(name || '').trim();
     if (!cardName || cardName.length > 30) {
       return res.status(400).json({ error: 'Character name required, max 30 chars' });
-    }
-    if (!password || String(password).trim().length < 1) {
-      return res.status(400).json({ error: 'Management password required' });
     }
     if (!file) {
       return res.status(400).json({ error: 'Image required' });
@@ -103,7 +99,6 @@ cardsRouter.post('/', visitorAuth, authorAuth, requireAuthor, upload.single('ima
       const thumbBuffer = await image.getBuffer(file.mimetype as 'image/png' | 'image/jpeg');
       fs.writeFileSync(path.join(THUMB_DIR, thumbFilename), thumbBuffer);
     } catch {
-      // If thumbnail fails, use original as thumbnail
       fs.writeFileSync(path.join(THUMB_DIR, thumbFilename), file.buffer);
     }
 
@@ -114,11 +109,10 @@ cardsRouter.post('/', visitorAuth, authorAuth, requireAuthor, upload.single('ima
         const t = JSON.parse(tags);
         tagStr = JSON.stringify((Array.isArray(t) ? t : []).slice(0, 5));
       } catch {
-        tagStr = JSON.stringify(String(tags).split(/[,锛孿s]+/).filter(Boolean).slice(0, 5));
+        tagStr = JSON.stringify(String(tags).split(/[,，\s]+/).filter(Boolean).slice(0, 5));
       }
     }
 
-    const passwordHash = await bcrypt.hash(String(password).trim(), 10);
     const now = new Date().toISOString();
 
     const card = insertNum<CardRow>('cards', {
@@ -127,7 +121,7 @@ cardsRouter.post('/', visitorAuth, authorAuth, requireAuthor, upload.single('ima
       tags: tagStr,
       image_path: filename,
       thumb_path: thumbFilename,
-      password_hash: passwordHash,
+      password_hash: '',
       total_likes: 0,
       total_downloads: 0,
       created_at: now,
@@ -146,57 +140,60 @@ cardsRouter.post('/', visitorAuth, authorAuth, requireAuthor, upload.single('ima
   }
 });
 
-// ===== List cards with rankings =====
+// ===== List cards with ranking =====
 cardsRouter.get('/', (req: Request, res: Response) => {
   try {
-    const rank = (req.query.rank as string) || 'total';
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const rank = String(req.query.rank || 'total');
+    const page = Math.max(1, parseInt(String(req.query.page)) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit)) || 20));
 
     const allCards = queryAll<CardRow>('cards');
     const allLikes = queryAll<LikeRow>('likes');
 
-    // Compute scores
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
-    weekStart.setHours(0, 0, 0, 0);
-    const weekStartStr = weekStart.toISOString();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartStr = todayStart.toISOString();
 
-    const scored = allCards.map(card => {
+    const weekStartStr = new Date(Date.now() - 7 * 86400000).toISOString();
+
+    const items = allCards.map(card => {
       let score = 0;
-      if (rank === 'total') {
-        score = card.total_likes;
-      } else if (rank === 'daily') {
-        score = allLikes.filter(l => l.card_id === card.id && l.created_at >= todayStart).length;
+      if (rank === 'daily') {
+        score = allLikes.filter(l => l.card_id === card.id && l.created_at >= todayStartStr).length;
       } else if (rank === 'weekly') {
         score = allLikes.filter(l => l.card_id === card.id && l.created_at >= weekStartStr).length;
+      } else {
+        score = card.total_likes;
       }
       return { card, score };
     });
 
-    scored.sort((a, b) => b.score - a.score);
+    items.sort((a, b) => b.score - a.score);
 
-    const total = scored.length;
-    const paged = scored.slice((page - 1) * limit, page * limit);
+    const total = items.length;
+    const start = (page - 1) * limit;
+    const paged = items.slice(start, start + limit);
 
-    const items = paged.map((item, idx) => ({
-      rank: (page - 1) * limit + idx + 1,
-      id: item.card.id,
-      name: item.card.name,
-      intro: item.card.intro,
-      tags: JSON.parse(item.card.tags || '[]'),
-      thumbPath: `/uploads/thumbs/${item.card.thumb_path}`,
-      score: item.score,
-      totalLikes: item.card.total_likes,
-      totalDownloads: item.card.total_downloads,
-    }));
-
-    res.json({ items, total, page, limit, rank });
+    res.json({
+      items: paged.map((item, idx) => ({
+        rank: start + idx + 1,
+        id: item.card.id,
+        name: item.card.name,
+        intro: item.card.intro,
+        tags: JSON.parse(item.card.tags || '[]'),
+        thumbPath: '/uploads/thumbs/' + item.card.thumb_path,
+        score: item.score,
+        totalLikes: item.card.total_likes,
+        totalDownloads: item.card.total_downloads,
+      })),
+      total,
+      page,
+      limit,
+      rank,
+    });
   } catch (err) {
     console.error('List cards error:', err);
-    res.status(500).json({ error: 'Failed to load cards' });
+    res.status(500).json({ error: 'Failed to list cards' });
   }
 });
 
@@ -210,15 +207,11 @@ cardsRouter.get('/:id', (req: Request, res: Response) => {
     if (!card) return res.status(404).json({ error: 'Card not found' });
 
     const likes = queryAll<LikeRow>('likes', l => l.card_id === id);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayLikes = likes.filter(l => l.created_at >= todayStart.toISOString()).length;
 
-    // Today's likes
-    const todayStart = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).toISOString();
-    const todayLikes = likes.filter(l => l.created_at >= todayStart).length;
-
-    // Week's likes
-    const weekStart = new Date();
-    weekStart.setDate(new Date().getDate() - new Date().getDay());
-    weekStart.setHours(0, 0, 0, 0);
+    const weekStart = new Date(Date.now() - 7 * 86400000);
     const weekLikes = likes.filter(l => l.created_at >= weekStart.toISOString()).length;
 
     res.json({
@@ -226,8 +219,8 @@ cardsRouter.get('/:id', (req: Request, res: Response) => {
       name: card.name,
       intro: card.intro,
       tags: JSON.parse(card.tags || '[]'),
-      imagePath: `/uploads/${card.image_path}`,
-      thumbPath: `/uploads/thumbs/${card.thumb_path}`,
+      imagePath: '/uploads/' + card.image_path,
+      thumbPath: '/uploads/thumbs/' + card.thumb_path,
       totalLikes: card.total_likes,
       todayLikes,
       weekLikes,
@@ -236,36 +229,31 @@ cardsRouter.get('/:id', (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error('Get card error:', err);
-    res.status(500).json({ error: 'Failed to load card' });
+    res.status(500).json({ error: 'Failed to get card' });
   }
 });
 
-// ===== Like =====
+// ===== Like (requires auth) =====
 cardsRouter.post('/:id/like', rateLimit(1000, 20), visitorAuth, authorAuth, requireAccess, (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
 
-    const ip = req.ip || 'unknown';
-    const ipKey = hashIP(ip);
+    const card = queryOne<CardRow>('cards', c => c.id === id);
+    if (!card) return res.status(404).json({ error: 'Card not found' });
 
-    // Check daily limit
+    const ipKey = (req.ip || 'unknown') + ':like';
     const used = getDailyLikes(ipKey);
-    if (used >= 100) {
-      return res.status(429).json({ error: '\u4eca\u65e5\u70b9\u8d5e\u5df2\u8fbe\u4e0a\u9650\uff0c\u660e\u5929\u518d\u6765\u5427~' });
-    }
+    if (used >= 100) return res.status(429).json({ error: '今日点赞已达上限，明天再来吧~' });
 
     incrementDailyLikes(ipKey);
 
-    // Record like
     insertNum<LikeRow>('likes', {
       card_id: id,
-      ip_hash: ipKey,
+      ip_hash: hashIP(req.ip || 'unknown'),
       created_at: new Date().toISOString(),
     });
 
-    // Update total likes (best effort)
-    const card = queryOne<CardRow>('cards', c => c.id === id);
     if (card) {
       updateRow<CardRow>('cards', id, { total_likes: card.total_likes + 1 } as Partial<CardRow>);
     }
@@ -277,7 +265,7 @@ cardsRouter.post('/:id/like', rateLimit(1000, 20), visitorAuth, authorAuth, requ
   }
 });
 
-// ===== Download =====
+// ===== Download (requires auth) =====
 cardsRouter.get('/:id/download', visitorAuth, authorAuth, requireAccess, (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
@@ -289,7 +277,6 @@ cardsRouter.get('/:id/download', visitorAuth, authorAuth, requireAccess, (req: R
     const filePath = path.join(UPLOAD_DIR, card.image_path);
     if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Image not found' });
 
-    // Record download
     const ip = req.ip || 'unknown';
     insertNum<DownloadRow>('downloads', {
       card_id: id,
@@ -297,7 +284,6 @@ cardsRouter.get('/:id/download', visitorAuth, authorAuth, requireAccess, (req: R
       created_at: new Date().toISOString(),
     });
 
-    // Update counter
     updateRow<CardRow>('cards', id, {
       total_downloads: card.total_downloads + 1,
     } as Partial<CardRow>);
@@ -312,49 +298,11 @@ cardsRouter.get('/:id/download', visitorAuth, authorAuth, requireAccess, (req: R
   }
 });
 
-// ===== Manage: verify password =====
-cardsRouter.post('/:id/manage', async (req: Request, res: Response) => {
+// ===== Update card (author only) =====
+cardsRouter.put('/:id', visitorAuth, authorAuth, requireAuthor, (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
-
-    const { password } = req.body as { password: string };
-    if (!password) return res.status(400).json({ error: 'Password required' });
-
-    const card = queryOne<CardRow>('cards', c => c.id === id);
-    if (!card) return res.status(404).json({ error: 'Card not found' });
-
-    const valid = await bcrypt.compare(password, card.password_hash);
-    if (!valid) return res.status(403).json({ error: 'Wrong password' });
-
-    // Generate a one-time management token
-    const token = crypto.randomBytes(16).toString('hex');
-    // Store in memory (simple approach)
-    manageTokens.set(token, { cardId: id, expires: Date.now() + 3600000 });
-
-    res.json({ ok: true, token });
-  } catch (err) {
-    console.error('Manage auth error:', err);
-    res.status(500).json({ error: 'Auth failed' });
-  }
-});
-
-// In-memory manage tokens
-const manageTokens = new Map<string, { cardId: number; expires: number }>();
-
-function checkManageToken(req: Request, cardId: number): boolean {
-  const token = (req.headers['x-manage-token'] as string) || '';
-  const entry = manageTokens.get(token);
-  if (!entry || entry.expires < Date.now() || entry.cardId !== cardId) return false;
-  return true;
-}
-
-// ===== Update card =====
-cardsRouter.put('/:id', async (req: Request, res: Response) => {
-  try {
-    const id = parseInt(req.params.id, 10);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
-    if (!checkManageToken(req, id)) return res.status(403).json({ error: 'Unauthorized' });
 
     const body = req.body as Record<string, unknown>;
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -372,7 +320,7 @@ cardsRouter.put('/:id', async (req: Request, res: Response) => {
       if (Array.isArray(t)) {
         updates.tags = JSON.stringify(t.slice(0, 5));
       } else {
-        updates.tags = JSON.stringify(String(t).split(/[,锛孿s]+/).filter(Boolean).slice(0, 5));
+        updates.tags = JSON.stringify(String(t).split(/[,，\s]+/).filter(Boolean).slice(0, 5));
       }
     }
 
@@ -389,25 +337,21 @@ cardsRouter.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// ===== Delete card =====
-cardsRouter.delete('/:id', (req: Request, res: Response) => {
+// ===== Delete card (author only) =====
+cardsRouter.delete('/:id', visitorAuth, authorAuth, requireAuthor, (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
-    if (!checkManageToken(req, id)) return res.status(403).json({ error: 'Unauthorized' });
 
     const card = queryOne<CardRow>('cards', c => c.id === id);
     if (!card) return res.status(404).json({ error: 'Card not found' });
 
-    // Delete image files
     const imgPath = path.join(UPLOAD_DIR, card.image_path);
     const thumbPath = path.join(THUMB_DIR, card.thumb_path);
     try { if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath); } catch {}
     try { if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath); } catch {}
 
-    // Delete records
     deleteRow('cards', id);
-    // Clean related likes/downloads
     const likes = queryAll<LikeRow>('likes', l => l.card_id === id);
     const downloads = queryAll<DownloadRow>('downloads', d => d.card_id === id);
     for (const l of likes) deleteRow('likes', l.id);

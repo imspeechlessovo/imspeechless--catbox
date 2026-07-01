@@ -1,210 +1,168 @@
 <template>
   <div class="min-h-screen">
-    <!-- === Login buttons: top-right === -->
-    <div class="fixed top-4 right-4 z-50 flex items-center gap-2">
+    <!-- ======== Top-right login buttons ======== -->
+    <div class="fixed top-5 right-5 z-50 flex items-center gap-2.5">
       <template v-if="!authStore.isAuthor && !authStore.isVisitorPassed">
-        <router-link to="/gate"
-          class="px-4 py-2 rounded-full text-xs font-medium bg-white/70 backdrop-blur text-slate-500 hover:text-slate-700 hover:bg-white/90 transition-all shadow-sm">
-          粉丝登录
-        </router-link>
-        <router-link to="/author/login"
-          class="px-4 py-2 rounded-full text-xs font-medium bg-white/70 backdrop-blur text-slate-500 hover:text-slate-700 hover:bg-white/90 transition-all shadow-sm">
-          作者登录
-        </router-link>
+        <router-link to="/gate" class="nav-btn">👥 粉丝登录</router-link>
+        <router-link to="/author/login" class="nav-btn">✍️ 作者登录</router-link>
       </template>
       <template v-else>
-        <span v-if="authStore.isAuthor" class="text-xs text-slate-500 bg-white/70 backdrop-blur px-3 py-1.5 rounded-full">
-          作者：{{ authStore.authorDisplayName }}
-        </span>
-        <span v-else-if="authStore.isVisitorPassed" class="text-xs text-slate-500 bg-white/70 backdrop-blur px-3 py-1.5 rounded-full">
-          已通过门禁
-        </span>
-        <button v-if="authStore.isAuthor || authStore.isVisitorPassed" @click="handleLogout"
-          class="px-3 py-1.5 rounded-full text-xs font-medium bg-white/70 backdrop-blur text-slate-400 hover:text-rose-500 transition-all shadow-sm">
-          退出
-        </button>
+        <span v-if="authStore.isAuthor" class="nav-badge-accent">🥑 {{ authStore.authorDisplayName }}</span>
+        <span v-else class="nav-badge">✅ 已通过门禁</span>
+        <button @click="handleLogout" class="nav-btn nav-btn-out">退出</button>
       </template>
     </div>
 
-    <!-- === Section 1: Countdown === -->
-    <div class="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-      <div class="w-full max-w-lg mx-auto text-center space-y-8">
-        <div class="space-y-2">
-          <h1 class="text-2xl md:text-3xl font-light text-slate-700 tracking-wider">等待作者回归</h1>
-          <p class="text-sm md:text-base text-slate-400 italic">"这不是结束，只是冷却时间。"</p>
-        </div>
-
+    <!-- ======== SECTION 1: Countdown ======== -->
+    <section class="countdown-section">
+      <div class="countdown-inner">
         <CountdownDisplay v-if="countdownData" :release-time-str="countdownData.releaseTime" :server-time-str="countdownData.serverTime" />
         <CountdownDisplay v-else />
-
-        <p class="text-xs text-slate-300 pt-8 animate-bounce">↓ 向下滑动查看角色卡排行 ↓</p>
+        <div class="scroll-hint">
+          <svg class="w-4 h-4 mx-auto animate-bounce" :style="{ color: 'var(--text-muted)' }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+          <p class="text-xs mt-2" :style="{ color: 'var(--text-muted)' }">向下滚动探索</p>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- === Section 2: Character Card Rankings === -->
-    <div class="px-4 py-12 bg-white/30">
-      <div class="w-full max-w-3xl mx-auto">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-light text-slate-700">角色卡排行榜</h2>
-          <router-link v-if="authStore.isAuthor" to="/create"
-            class="px-4 py-2 rounded-xl text-sm font-medium bg-slate-800 text-white hover:bg-slate-700 transition-all shadow-sm">
-            + 创建角色卡
-          </router-link>
+    <!-- ======== SECTION 2: Rankings (single column, one card per row) ======== -->
+    <section class="ranking-section">
+      <div class="max-w-3xl mx-auto px-4">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">🏆 角色卡排行</h2>
+            <p class="section-subtitle">粉丝们的最爱，点进去看看？</p>
+          </div>
+          <router-link v-if="authStore.isAuthor" to="/create" class="btn-primary">+ 创建角色卡</router-link>
         </div>
 
-        <!-- Rank tabs -->
-        <div class="flex gap-2 mb-6">
-          <button v-for="t in tabs" :key="t.key" @click="switchTab(t.key)"
-            class="px-5 py-2 rounded-full text-sm transition-all"
-            :class="rank === t.key ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'">
-            {{ t.label }}
-          </button>
+        <div class="tabs-row">
+          <button v-for="t in tabs" :key="t.key" @click="switchTab(t.key)" class="tab-btn" :class="{ active: rank === t.key }">{{ t.label }}</button>
         </div>
 
-        <div v-if="loadingCards" class="text-center py-12"><p class="text-slate-400 text-sm">加载中...</p></div>
+        <div v-if="loadingCards" class="loading-msg">加载中...</div>
 
-        <div v-else class="space-y-3">
-          <div v-for="item in items" :key="item.id"
-            class="glass rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-all cursor-pointer"
-            @click="$router.push('/card/' + item.id)">
-            <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
-              <span v-if="item.rank === 1" class="text-2xl">&#x1F947;</span>
-              <span v-else-if="item.rank === 2" class="text-2xl">&#x1F948;</span>
-              <span v-else-if="item.rank === 3" class="text-2xl">&#x1F949;</span>
-              <span v-else class="text-sm font-medium text-slate-400">#{{ item.rank }}</span>
+        <!-- Single column list -->
+        <div v-else class="rank-list">
+          <div v-for="(item, idx) in items" :key="item.id"
+            class="rank-row"
+            :class="{ 'rank-gold': item.rank === 1, 'rank-silver': item.rank === 2, 'rank-bronze': item.rank === 3 }"
+            :style="{ animationDelay: idx * 0.04 + 's' }"
+            @click="router.push('/card/' + item.id)">
+
+            <!-- Rank number -->
+            <div class="rank-pos">
+              <span v-if="item.rank === 1" class="rank-medal">🥇</span>
+              <span v-else-if="item.rank === 2" class="rank-medal">🥈</span>
+              <span v-else-if="item.rank === 3" class="rank-medal">🥉</span>
+              <span v-else class="rank-num">{{ String(item.rank).padStart(2, '0') }}</span>
             </div>
-            <img :src="item.thumbPath" :alt="item.name" class="w-16 h-16 rounded-xl object-cover flex-shrink-0 bg-slate-100" />
-            <div class="flex-1 min-w-0">
-              <h3 class="font-medium text-slate-700 truncate">{{ item.name }}</h3>
-              <p v-if="item.intro" class="text-xs text-slate-400 mt-0.5 line-clamp-1">{{ item.intro }}</p>
-              <div class="flex items-center gap-2 mt-1">
-                <span v-for="t in item.tags" :key="t" class="text-xs px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-500">{{ t }}</span>
+
+            <!-- Thumb -->
+            <div class="rank-row-thumb">
+              <img v-if="item.thumbPath" :src="item.thumbPath" :alt="item.name" class="rank-row-thumb-img" />
+              <span v-else class="rank-row-thumb-placeholder">🖼</span>
+            </div>
+
+            <!-- Info -->
+            <div class="rank-row-info">
+              <h3 class="rank-row-name">{{ item.name }}</h3>
+              <p v-if="item.intro" class="rank-row-intro">{{ item.intro }}</p>
+              <div v-if="item.tags.length" class="rank-row-tags">
+                <span v-for="t in item.tags.slice(0,4)" :key="t" class="rank-row-tag">{{ t }}</span>
               </div>
             </div>
-            <div class="text-right flex-shrink-0">
-              <p class="text-lg font-light text-rose-400">{{ item.score }}</p>
-              <p class="text-xs text-slate-400">&#x1F44D;</p>
-            </div>
-          </div>
-          <div v-if="items.length === 0" class="text-center py-12">
-            <p class="text-slate-400 text-sm">暂无角色卡</p>
-            <p v-if="authStore.isAuthor" class="text-slate-400 text-xs mt-1">点击右上角创建第一张</p>
-          </div>
-        </div>
 
-        <div v-if="totalPages > 1" class="flex justify-center gap-2 mt-8">
-          <button @click="changePage(page - 1)" :disabled="page <= 1"
-            class="px-4 py-2 rounded-xl text-sm text-slate-500 hover:text-slate-700 disabled:opacity-30 transition-colors">上一页</button>
-          <span class="px-4 py-2 text-sm text-slate-400">{{ page }} / {{ totalPages }}</span>
-          <button @click="changePage(page + 1)" :disabled="page >= totalPages"
-            class="px-4 py-2 rounded-xl text-sm text-slate-500 hover:text-slate-700 disabled:opacity-30 transition-colors">下一页</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- === Section 3: Message Wall === -->
-    <div class="px-4 py-12">
-      <div class="w-full max-w-2xl mx-auto">
-        <h2 class="text-xl font-light text-slate-700 text-center mb-2">留言板</h2>
-        <p class="text-xs text-slate-400 text-center mb-8">留下你想说的话</p>
-
-        <!-- Posting form (authed only) -->
-        <div v-if="canPost" class="glass rounded-2xl p-4 md:p-6 mb-8 shadow-sm">
-          <form @submit.prevent="submitMessage" class="space-y-4">
-            <input
-              v-model="msgNickname"
-              type="text"
-              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white/60 text-sm text-slate-700 placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300 transition-all"
-              placeholder="你的昵称（最多20字）"
-              maxlength="20"
-              :disabled="submittingMsg"
-            />
-            <textarea
-              v-model="msgContent"
-              class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white/60 text-sm text-slate-700 placeholder-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300 transition-all"
-              rows="3"
-              placeholder="写下你想说的话（最多200字）"
-              maxlength="200"
-              :disabled="submittingMsg"
-            ></textarea>
-            <div class="flex items-center justify-between">
-              <span class="text-xs text-slate-400">{{ msgContent.length }}/200</span>
-              <button type="submit" :disabled="submittingMsg || !msgNickname.trim() || !msgContent.trim()"
-                class="px-6 py-2 rounded-xl text-sm font-medium bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50 transition-all shadow-sm">
-                {{ submittingMsg ? '发送中...' : '留言' }}
+            <!-- Like button + rolling count -->
+            <div class="rank-like-area" @click.stop>
+              <button @click="handleCardLike(item)" :disabled="likingCard === item.id" class="rank-like-btn">
+                <span class="like-heart" :class="{ 'like-pop': likePopId === item.id }">❤️</span>
               </button>
+              <div class="like-count-wrapper">
+                <span class="like-count" :key="'like-' + item.id + '-' + item.totalLikes">{{ formatLikeCount(item.totalLikes) }}</span>
+              </div>
             </div>
-          </form>
-          <p v-if="msgError" class="text-sm text-rose-500 mt-3">{{ msgError }}</p>
-        </div>
-
-        <div v-else class="text-center py-4 mb-4">
-          <p class="text-sm text-slate-400">
-            想留言？先
-            <router-link to="/gate" class="text-violet-500 hover:underline">回答几个小问题</router-link>
-            或
-            <router-link to="/author/login" class="text-violet-500 hover:underline">作者登录</router-link>
-          </p>
-        </div>
-
-        <!-- Messages -->
-        <div v-if="loadingMsgs" class="text-center py-8"><p class="text-slate-400 text-sm">加载中...</p></div>
-        <div v-else class="space-y-4">
-          <div v-for="msg in allMessages" :key="msg.type + '-' + msg.id">
-            <MessageCard :message="msg" :is-author="authStore.isAuthor" @pin="handlePin" @delete="handleDelete" />
-          </div>
-          <div v-if="allMessages.length === 0" class="text-center py-12">
-            <p class="text-slate-400 text-sm">还没有留言，来做第一个留言的人吧</p>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- === Section 4: Author Tools === -->
-    <div v-if="authStore.isAuthor" class="px-4 py-12 bg-white/30">
-      <div class="w-full max-w-2xl mx-auto text-center">
-        <h2 class="text-lg font-light text-slate-600 mb-6">作者工具</h2>
-        <div class="flex flex-col sm:flex-row justify-center gap-4">
-          <router-link to="/create"
-            class="px-8 py-4 rounded-2xl glass text-slate-700 hover:text-slate-900 hover:shadow-md transition-all">
-            <span class="text-2xl mr-2">+</span> 创建角色卡
-          </router-link>
-          <router-link to="/author/questions"
-            class="px-8 py-4 rounded-2xl glass text-slate-700 hover:text-slate-900 hover:shadow-md transition-all">
-            ✏️ 修改粉丝登录问题
-          </router-link>
+        <div v-if="totalPages > 1" class="pagination">
+          <button v-for="p in totalPages" :key="p" @click="changePage(p)" class="page-btn" :class="{ active: p === page }">{{ p }}</button>
         </div>
       </div>
-    </div>
+    </section>
+
+    <!-- ======== SECTION 3: Message Wall ======== -->
+    <section class="message-section">
+      <div class="max-w-2xl mx-auto px-4">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">💬 留言板</h2>
+            <p class="section-subtitle">来都来了，留下点痕迹再走呗～</p>
+          </div>
+        </div>
+
+        <div v-if="canPost" class="post-form animate-slide-up">
+          <div class="post-form-avatar">💬</div>
+          <div class="post-form-body">
+            <input v-model="msgNickname" type="text" maxlength="20" class="post-input" placeholder="你的昵称" />
+            <textarea v-model="msgContent" rows="2" maxlength="500" class="post-textarea" placeholder="说点什么吧..."></textarea>
+            <div class="post-form-footer">
+              <p v-if="msgError" class="post-error">{{ msgError }}</p>
+              <button @click="submitMessage" :disabled="submittingMsg" class="btn-primary btn-sm">{{ submittingMsg ? '发送中...' : '📨 留言' }}</button>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="login-prompt">
+          <p>想留言、点赞、下载？先 <router-link to="/gate" class="accent-link">回答几个小问题</router-link> 或 <router-link to="/author/login" class="accent-link">作者登录</router-link> 吧~</p>
+        </div>
+
+        <div v-if="loadingMsgs" class="loading-msg">加载中...</div>
+        <div v-else class="messages-list">
+          <MessageCard v-for="msg in allMessages" :key="msg.type + '-' + msg.id" :message="msg" :isAuthor="authStore.isAuthor" @pin="handlePin" @delete="handleDelete" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ======== Author tools ======== -->
+    <section v-if="authStore.isAuthor" class="author-section">
+      <div class="max-w-2xl mx-auto px-4">
+        <h2 class="section-title mb-5">🛠️ 作者工具箱</h2>
+        <div class="author-tools">
+          <router-link to="/create" class="tool-card"><span class="text-2xl">⭐</span><span>创建角色卡</span></router-link>
+          <router-link to="/author/questions" class="tool-card"><span class="text-2xl">🔐</span><span>修改门禁问题</span></router-link>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site-footer">🥑 niuyouguo &copy; 2026 — 这不是结束，只是冷却时间</footer>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import CountdownDisplay from '../components/CountdownDisplay.vue'
 import MessageCard from '../components/MessageCard.vue'
 import { useAuthStore } from '../stores/auth'
+import { useThemeStore } from '../stores/theme'
 import {
-  getCountdown, getCards, getMessages, postMessage, deleteMessage, togglePin,
+  getCountdown, getCards, likeCard, getMessages, postMessage, deleteMessage, togglePin,
   authorLogout, visitorLogout,
   type CardListItem, type MessageItem, type AuthorMessageItem
 } from '../api'
 
+const router = useRouter()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 
-// Countdown
 const countdownData = ref<{ releaseTime: string; serverTime: string } | null>(null)
-
-// Cards
-const tabs = [{ key: 'total', label: '总榜' }, { key: 'daily', label: '日榜' }, { key: 'weekly', label: '周榜' }]
+const tabs = [{ key: 'total', label: '🏆 总榜' }, { key: 'daily', label: '🔥 日榜' }, { key: 'weekly', label: '📅 周榜' }]
 const rank = ref('total')
 const page = ref(1)
 const items = ref<CardListItem[]>([])
-const total = ref(0)
 const loadingCards = ref(true)
 const totalPages = ref(0)
-
-// Messages
 const loadingMsgs = ref(true)
 const submittingMsg = ref(false)
 const msgError = ref('')
@@ -212,10 +170,16 @@ const msgNickname = ref('')
 const msgContent = ref('')
 const visitorMessages = ref<MessageItem[]>([])
 const authorMessages = ref<AuthorMessageItem[]>([])
-
 const canPost = computed(() => authStore.isAuthor || authStore.isVisitorPassed)
-
 const allMessages = computed(() => [...authorMessages.value, ...visitorMessages.value])
+const likingCard = ref<number | null>(null)
+const likePopId = ref<number | null>(null)
+
+function formatLikeCount(n: number): string {
+  if (n >= 10000) return (n / 10000).toFixed(1) + 'w'
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k'
+  return String(n)
+}
 
 onMounted(async () => {
   await authStore.checkAuth()
@@ -224,29 +188,34 @@ onMounted(async () => {
   await loadMessages()
 })
 
-// --- Cards ---
 async function loadCards() {
   loadingCards.value = true
-  try {
-    const data = await getCards(rank.value, page.value, 20)
-    items.value = data.items
-    total.value = data.total
-    totalPages.value = Math.ceil(data.total / data.limit)
-  } catch { items.value = [] }
+  try { const data = await getCards(rank.value, page.value, 20); items.value = data.items; totalPages.value = Math.ceil(data.total / data.limit) }
+  catch { items.value = [] }
   loadingCards.value = false
+}
+
+async function handleCardLike(item: CardListItem) {
+  if (likingCard.value) return
+  likingCard.value = item.id
+  likePopId.value = item.id
+  setTimeout(() => { likePopId.value = null }, 400)
+  try {
+    const result = await likeCard(item.id)
+    item.totalLikes = result.totalLikes
+    item.score = result.totalLikes
+  }
+  catch (err: unknown) { alert(err instanceof Error ? err.message : 'error') }
+  likingCard.value = null
 }
 
 function switchTab(key: string) { rank.value = key; page.value = 1; loadCards() }
 function changePage(p: number) { page.value = p; loadCards() }
 
-// --- Messages ---
 async function loadMessages() {
   loadingMsgs.value = true
-  try {
-    const data = await getMessages()
-    visitorMessages.value = data.messages || []
-    authorMessages.value = data.authorMessages || []
-  } catch {}
+  try { const data = await getMessages(); visitorMessages.value = data.messages || []; authorMessages.value = data.authorMessages || [] }
+  catch {}
   loadingMsgs.value = false
 }
 
@@ -254,53 +223,170 @@ async function submitMessage() {
   msgError.value = ''
   if (!msgNickname.value.trim() || !msgContent.value.trim()) return
   submittingMsg.value = true
-  try {
-    const msg = await postMessage(msgNickname.value.trim(), msgContent.value.trim())
-    visitorMessages.value.unshift(msg)
-    msgNickname.value = ''
-    msgContent.value = ''
-  } catch (err: unknown) {
-    msgError.value = err instanceof Error ? err.message : '留言失败'
-  } finally {
-    submittingMsg.value = false
-  }
+  try { const msg = await postMessage(msgNickname.value.trim(), msgContent.value.trim()); visitorMessages.value.unshift(msg); msgNickname.value = ''; msgContent.value = '' }
+  catch (err: unknown) { msgError.value = err instanceof Error ? err.message : 'error' }
+  finally { submittingMsg.value = false }
 }
 
 async function handlePin(msg: MessageItem | AuthorMessageItem) {
   try {
     const result = await togglePin(msg.id)
-    if (msg.type === 'visitor') {
-      const m = visitorMessages.value.find(m => m.id === msg.id)
-      if (m) (m as any).pinned = result.pinned
-    } else {
-      const m = authorMessages.value.find(m => m.id === msg.id)
-      if (m) (m as any).pinned = result.pinned
-    }
-    visitorMessages.value = [...visitorMessages.value]
-    authorMessages.value = [...authorMessages.value]
-  } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : '操作失败')
-  }
+    if (msg.type === 'visitor') { const m = visitorMessages.value.find(m => m.id === msg.id); if (m) (m as any).pinned = result.pinned }
+    else { const m = authorMessages.value.find(m => m.id === msg.id); if (m) (m as any).pinned = result.pinned }
+    visitorMessages.value = [...visitorMessages.value]; authorMessages.value = [...authorMessages.value]
+  } catch (err: unknown) { alert(err instanceof Error ? err.message : 'error') }
 }
 
 async function handleDelete(msg: MessageItem | AuthorMessageItem) {
-  if (!confirm('确定删除这条留言？')) return
-  try {
-    await deleteMessage(msg.id)
-    if (msg.type === 'visitor') {
-      visitorMessages.value = visitorMessages.value.filter(m => m.id !== msg.id)
-    } else {
-      authorMessages.value = authorMessages.value.filter(m => m.id !== msg.id)
-    }
-  } catch (err: unknown) {
-    alert(err instanceof Error ? err.message : '删除失败')
-  }
+  if (!confirm('确定删除？')) return
+  try { await deleteMessage(msg.id); if (msg.type === 'visitor') visitorMessages.value = visitorMessages.value.filter(m => m.id !== msg.id); else authorMessages.value = authorMessages.value.filter(m => m.id !== msg.id) }
+  catch (err: unknown) { alert(err instanceof Error ? err.message : 'error') }
 }
 
 async function handleLogout() {
-  try {
-    if (authStore.isAuthor) { await authorLogout(); authStore.clearAuthor(); }
-    else if (authStore.isVisitorPassed) { await visitorLogout(); authStore.isVisitorPassed = false; }
-  } catch {}
+  try { if (authStore.isAuthor) { await authorLogout(); authStore.clearAuthor() } else if (authStore.isVisitorPassed) { await visitorLogout(); authStore.isVisitorPassed = false } }
+  catch {}
 }
 </script>
+
+<style scoped>
+/* ====== NAV BUTTONS ====== */
+.nav-btn {
+  padding: 8px 18px; border-radius: var(--card-radius-sm); font-size: 0.8rem; font-weight: 500;
+  background: var(--card-bg); color: var(--text-secondary); border: 1px solid var(--border);
+  transition: all 0.2s ease; text-decoration: none; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--card-shadow); cursor: pointer;
+}
+.nav-btn:hover { color: var(--text-primary); background: var(--surface-hover); border-color: var(--accent-glow); }
+.nav-btn-out:hover { color: var(--danger-text) !important; }
+.nav-badge { padding: 8px 18px; border-radius: var(--card-radius-sm); font-size: 0.8rem; background: var(--card-bg); color: var(--text-secondary); border: 1px solid var(--border); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.nav-badge-accent { padding: 8px 18px; border-radius: var(--card-radius-sm); font-size: 0.8rem; font-weight: 600; background: var(--badge-bg); color: var(--badge-text); border: 1px solid var(--accent-glow); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+
+/* ====== COUNTDOWN ====== */
+.countdown-section { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 6rem 1rem 2rem; }
+.countdown-inner { max-width: 600px; width: 100%; text-align: center; }
+.scroll-hint { margin-top: 5rem; animation: fadeIn 0.6s ease-out 0.5s both; }
+
+/* ====== SECTION HEADERS ====== */
+.section-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+.section-title { font-family: var(--font-heading); font-size: 1.5rem; font-weight: 600; color: var(--text-primary); }
+.section-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+
+/* ====== BUTTONS ====== */
+.btn-primary { padding: 10px 24px; border-radius: var(--card-radius-sm); font-size: 0.85rem; font-weight: 500; background: var(--accent); color: #fff; border: none; cursor: pointer; transition: all 0.2s ease; text-decoration: none; display: inline-block; box-shadow: 0 4px 16px var(--accent-glow); }
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-sm { padding: 8px 18px; font-size: 0.8rem; }
+
+/* ====== TABS ====== */
+.tabs-row { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.tab-btn { padding: 8px 20px; border-radius: var(--card-radius-sm); font-size: 0.82rem; font-weight: 500; border: 1px solid transparent; cursor: pointer; transition: all 0.2s ease; background: transparent; color: var(--text-muted); }
+.tab-btn.active { background: var(--card-bg); color: var(--text-primary); border-color: var(--border); box-shadow: var(--card-shadow); }
+.tab-btn:hover:not(.active) { color: var(--text-secondary); background: var(--card-bg); }
+
+/* ====== RANKINGS - Single Column List ====== */
+.ranking-section { padding: 4rem 1rem 4rem; border-top: 1px solid var(--border); }
+.rank-list { display: flex; flex-direction: column; gap: 10px; }
+
+.rank-row {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 20px;
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: var(--card-radius); cursor: pointer;
+  transition: all 0.25s ease;
+  animation: slideUp 0.45s ease-out both;
+}
+.rank-row:hover {
+  border-color: var(--accent-glow);
+  box-shadow: var(--card-shadow-hover);
+  transform: translateX(6px);
+}
+.rank-gold { border-left: 4px solid #FFC107; background: linear-gradient(90deg, rgba(255,193,7,0.05), var(--card-bg) 20%); }
+.rank-silver { border-left: 4px solid #C0C0C0; background: linear-gradient(90deg, rgba(192,192,192,0.05), var(--card-bg) 20%); }
+.rank-bronze { border-left: 4px solid #CD7F32; background: linear-gradient(90deg, rgba(205,127,50,0.05), var(--card-bg) 20%); }
+
+/* Rank position */
+.rank-pos { width: 40px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.rank-medal { font-size: 1.8rem; }
+.rank-num { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 700; color: var(--text-muted); }
+
+/* Thumb */
+.rank-row-thumb {
+  width: 64px; height: 64px; border-radius: 16px; overflow: hidden; flex-shrink: 0;
+  border: 1px solid var(--border); background: var(--surface-hover);
+}
+.rank-row-thumb-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+.rank-row:hover .rank-row-thumb-img { transform: scale(1.08); }
+.rank-row-thumb-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--text-muted); }
+
+/* Info */
+.rank-row-info { flex: 1; min-width: 0; }
+.rank-row-name { font-family: var(--font-heading); font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+.rank-row-intro { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-row-tags { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.rank-row-tag { font-size: 0.65rem; padding: 2px 10px; border-radius: 10px; background: var(--badge-bg); color: var(--badge-text); font-weight: 500; }
+
+/* Like area */
+.rank-like-area { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; min-width: 56px; }
+.rank-like-btn { background: none; border: none; cursor: pointer; padding: 6px; border-radius: 12px; transition: all 0.2s ease; }
+.rank-like-btn:hover { background: var(--accent-glow); }
+.rank-like-btn:active { transform: scale(0.9); }
+
+.like-heart { font-size: 1.4rem; display: inline-block; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.like-pop { animation: heartPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+@keyframes heartPop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.5); }
+  100% { transform: scale(1); }
+}
+
+.like-count-wrapper {
+  position: relative; height: 24px; overflow: hidden;
+}
+.like-count {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent);
+  animation: countRoll 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes countRoll {
+  0% { transform: translateY(-100%); opacity: 0; }
+  60% { transform: translateY(8%); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* ====== PAGINATION ====== */
+.pagination { display: flex; justify-content: center; gap: 8px; margin-top: 2rem; }
+.page-btn { width: 36px; height: 36px; border-radius: var(--card-radius-sm); font-size: 0.82rem; font-weight: 500; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s ease; background: var(--card-bg); color: var(--text-secondary); }
+.page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+.page-btn:hover:not(.active) { border-color: var(--accent-glow); color: var(--text-primary); }
+
+/* ====== MESSAGE WALL ====== */
+.message-section { padding: 4rem 1rem 4rem; border-top: 1px solid var(--border); }
+.post-form { display: flex; gap: 14px; padding: 20px; margin-bottom: 2rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--card-radius); box-shadow: var(--card-shadow); }
+.post-form-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--surface-hover); font-size: 1.3rem; flex-shrink: 0; }
+.post-form-body { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+.post-input, .post-textarea { width: 100%; padding: 10px 14px; border-radius: var(--card-radius-sm); font-size: 0.85rem; background: var(--input-bg); color: var(--text-primary); border: 1px solid var(--input-border); outline: none; transition: all 0.2s ease; font-family: var(--font-body); }
+.post-textarea { resize: vertical; min-height: 60px; }
+.post-input:focus, .post-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.post-form-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.post-error { font-size: 0.8rem; color: var(--danger-text); margin-right: auto; }
+
+.login-prompt { text-align: center; padding: 2rem; margin-bottom: 2rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--card-radius); font-size: 0.9rem; color: var(--text-muted); }
+.accent-link { color: var(--accent); text-decoration: none; font-weight: 500; }
+.accent-link:hover { text-decoration: underline; }
+
+.messages-list { display: flex; flex-direction: column; gap: 10px; }
+.loading-msg { text-align: center; padding: 3rem; font-size: 0.85rem; color: var(--text-muted); }
+
+/* ====== AUTHOR TOOLS ====== */
+.author-section { padding: 3rem 1rem 4rem; border-top: 1px solid var(--border); }
+.author-tools { display: flex; gap: 14px; flex-wrap: wrap; }
+.tool-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 32px; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--card-radius); color: var(--text-primary); text-decoration: none; font-size: 0.85rem; font-weight: 500; transition: all 0.2s ease; cursor: pointer; }
+.tool-card:hover { border-color: var(--accent-glow); box-shadow: var(--card-shadow-hover); transform: translateY(-2px); }
+
+.site-footer { text-align: center; padding: 2rem; font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid var(--border); }
+</style>

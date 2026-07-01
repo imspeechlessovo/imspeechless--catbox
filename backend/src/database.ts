@@ -66,28 +66,12 @@ export interface MessageLikeRow {
   id: number; message_id: number; ip_hash: string; created_at: string;
 }
 
-export interface ReplyRow {
-  id: number; message_id: number; nickname: string; content: string;
-  ip_hash: string; user_agent: string | null; created_at: string;
-}
-export interface MessageLikeRow {
-  id: number; message_id: number; ip_hash: string; created_at: string;
-}
-
-
-export interface StatsRow {
-  id: number; week: number; dateRange: string;
-  views: number; messages: number;
-  likes: number; chatUsers: number;
-  content: string; topWork: string;
-  created_at: string; updated_at: string;
-}
 
 
 function emptyData(): Data {
   return {
     questions: [], visitorSessions: [], messages: [], authorMessages: [],
-    authors: [], cards: [], likes: [], downloads: [], stats: [], replies: [], messageLikes: [], replies: [], messageLikes: [], stats: [],
+    authors: [], cards: [], likes: [], downloads: [], stats: [], replies: [], messageLikes: [],
     _idCounter: 1,
   };
 }

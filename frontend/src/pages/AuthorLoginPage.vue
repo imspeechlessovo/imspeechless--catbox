@@ -3,13 +3,13 @@
     <div class="w-full max-w-md mx-auto">
       <router-link to="/" class="inline-flex items-center text-sm mb-8 transition-colors" :style="{ color: 'var(--text-secondary)' }">
         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-        返回首页
+        算了，回首页
       </router-link>
 
       <div class="glass rounded-2xl p-6 md:p-8">
         <div class="text-center mb-6">
           <span class="text-4xl">✍️</span>
-          <h2 class="text-xl font-light mt-3" :style="{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }">作者登录</h2>
+          <h2 class="text-xl font-light mt-3" :style="{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }">作者本尊驾到</h2>
           <p class="text-xs mt-1" :style="{ color: 'var(--text-muted)' }">牛油果本果请进~</p>
         </div>
 
@@ -53,7 +53,7 @@
               borderRadius: 'var(--card-radius)',
               boxShadow: '0 4px 12px var(--accent-glow)',
             }">
-            {{ loading ? '登录中...' : '登录' }}
+            {{ loading ? '进去！中...' : '进去！' }}
           </button>
         </form>
       </div>
@@ -87,7 +87,7 @@ async function handleLogin() {
     authStore.setAuthor(result.author.displayName)
     router.push('/')
   } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : '登录失败'
+    error.value = err instanceof Error ? err.message : '进去！失败'
   } finally {
     loading.value = false
   }

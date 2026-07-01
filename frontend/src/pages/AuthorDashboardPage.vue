@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="min-h-screen px-4 py-8">
     <div class="w-full max-w-4xl mx-auto">
       <!-- Header -->

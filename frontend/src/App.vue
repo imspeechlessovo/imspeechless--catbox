@@ -1,45 +1,28 @@
 <template>
   <div class="min-h-screen" style="background: var(--page-bg); color: var(--text-primary); transition: background 0.4s ease, color 0.3s ease;">
 
-    <!-- ======== Animated Background Layer ======== -->
+    <!-- Animated Background Layer -->
     <div class="bg-deco-layer">
-      <!-- Breathing orbs -->
       <div class="breath-orb breath-orb-1"></div>
       <div class="breath-orb breath-orb-2"></div>
       <div class="breath-orb breath-orb-3"></div>
-
-      <!-- Rotating dashed rings -->
       <div class="deco-ring ring-1"></div>
       <div class="deco-ring ring-2"></div>
       <div class="deco-ring ring-3"></div>
-
-      <!-- Wandering lines -->
       <div class="deco-line line-1"></div>
       <div class="deco-line line-2"></div>
       <div class="deco-line line-3"></div>
       <div class="deco-line line-4"></div>
-
-      <!-- Floating geo frames -->
       <div class="deco-frame frame-1"></div>
       <div class="deco-frame frame-2"></div>
       <div class="deco-frame frame-3"></div>
-
-      <!-- Corner accents -->
       <div class="deco-corner corner-tl"></div>
       <div class="deco-corner corner-tr"></div>
       <div class="deco-corner corner-bl"></div>
       <div class="deco-corner corner-br"></div>
-
-      <!-- Scan lines -->
       <div class="deco-scanline"></div>
       <div class="deco-scanline"></div>
     </div>
-
-    <!-- Dot grid -->
-    <div class="bg-deco-layer">
-      <div class="deco-dot-grid"></div>
-    </div>
-
     <!-- Theme toggle -->
     <button
       @click="themeStore.toggleTheme()"
@@ -57,13 +40,9 @@
       <span v-else>☀️</span>
     </button>
 
-    <!-- Page content -->
+    <!-- Page content - plain router-view (no transition to avoid lazy-load blank screen) -->
     <div style="position: relative; z-index: 1;">
-      <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
+      <router-view :key="$route.fullPath" />
     </div>
   </div>
 </template>

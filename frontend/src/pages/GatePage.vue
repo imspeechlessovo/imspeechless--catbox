@@ -35,7 +35,7 @@
                 borderRadius: 'var(--card-radius)',
                 fontFamily: 'var(--font-body)',
               }"
-              placeholder="请输入答案"
+              placeholder="把答案敲这里"
               :disabled="submitting"
               @focus="(e: any) => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; }"
               @blur="(e: any) => { e.target.style.borderColor = 'var(--input-border)'; e.target.style.boxShadow = 'none'; }"
@@ -54,7 +54,7 @@
               borderRadius: 'var(--card-radius)',
               boxShadow: '0 4px 12px var(--accent-glow)',
             }">
-            {{ submitting ? '验证中...' : '提交答案' }}
+            {{ submitting ? '验证中...' : '我确定！' }}
           </button>
         </form>
 

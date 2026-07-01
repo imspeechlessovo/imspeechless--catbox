@@ -30,4 +30,8 @@ const router = createRouter({
   ],
 })
 
+router.onError((error) => {
+  console.error('[Router Error]', error)
+})
+
 export default router

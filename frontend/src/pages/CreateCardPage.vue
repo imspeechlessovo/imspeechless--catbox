@@ -9,12 +9,12 @@
       <div class="glass rounded-2xl p-6">
         <div class="text-center mb-6">
           <span class="text-3xl">🥑</span>
-          <h2 class="text-xl font-light mt-2" :style="{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }">创建角色卡</h2>
+          <h2 class="text-xl font-light mt-2" :style="{ color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }">捏个新角色</h2>
         </div>
 
         <form @submit.prevent="handleSubmit" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium mb-1" :style="{ color: 'var(--text-primary)' }">角色名 *</label>
+            <label class="block text-sm font-medium mb-1" :style="{ color: 'var(--text-primary)' }">角色叫啥 *</label>
             <input v-model="name" type="text" maxlength="30"
               class="w-full px-4 py-2.5 rounded-xl text-sm transition-all outline-none"
               :style="{
@@ -59,7 +59,7 @@
               @blur="(e: any) => { e.target.style.borderColor = 'var(--input-border)'; e.target.style.boxShadow = 'none'; }" />
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1" :style="{ color: 'var(--text-primary)' }">角色图 *</label>
+            <label class="block text-sm font-medium mb-1" :style="{ color: 'var(--text-primary)' }">来张靓照 *</label>
             <div class="border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer"
               :style="{ borderColor: 'var(--border)' }"
               @click="fileInput?.click()" @dragover.prevent @drop.prevent="onDrop">
@@ -80,7 +80,7 @@
               borderRadius: 'var(--card-radius)',
               boxShadow: '0 4px 12px var(--accent-glow)',
             }">
-            {{ submitting ? '创建中...' : '创建角色卡' }}
+            {{ submitting ? '捏好了！中...' : '捏个新角色' }}
           </button>
         </form>
       </div>
@@ -131,7 +131,7 @@ async function handleSubmit() {
     formData.append('image', file.value)
     const result = await createCard(formData)
     router.push('/card/' + result.id)
-  } catch (err: unknown) { error.value = err instanceof Error ? err.message : '创建失败' }
+  } catch (err: unknown) { error.value = err instanceof Error ? err.message : '捏好了！失败' }
   submitting.value = false
 }
 </script>

@@ -1,4 +1,4 @@
-﻿import { defineStore } from 'pinia'
+import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getAuthStatus, type AuthStatus } from '../api'
 
@@ -37,6 +37,10 @@ export const useAuthStore = defineStore('auth', () => {
     authorDisplayName.value = ''
   }
 
+  function clearVisitor() {
+    isVisitorPassed.value = false
+  }
+
   return {
     isVisitorPassed,
     isAuthor,
@@ -46,5 +50,6 @@ export const useAuthStore = defineStore('auth', () => {
     setVisitorPassed,
     setAuthor,
     clearAuthor,
+    clearVisitor,
   }
 })

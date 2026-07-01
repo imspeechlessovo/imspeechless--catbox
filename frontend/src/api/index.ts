@@ -50,21 +50,15 @@ export function getAuthStatus() {
 
 // Messages
 export interface MessageItem {
-  id: number;
-  nickname: string;
-  content: string;
-  pinned?: boolean;
-  createdAt: string;
-  type: 'visitor';
+  id: number; nickname: string; content: string;
+  pinned?: boolean; createdAt: string; type: 'visitor';
+  replyCount?: number; likeCount?: number; liked?: boolean;
 }
 
 export interface AuthorMessageItem {
-  id: number;
-  title: string;
-  content: string;
-  pinned: boolean;
-  createdAt: string;
-  type: 'author';
+  id: number; title: string; content: string;
+  pinned: boolean; createdAt: string; type: 'author';
+  replyCount?: number; likeCount?: number;
 }
 
 export interface MessagesResponse {
@@ -266,4 +260,25 @@ export function saveStats(data: {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+// Message replies
+export interface ReplyItem {
+  id: number; messageId: number; nickname: string; content: string; createdAt: string;
+}
+
+export function getReplies(messageId: number) {
+  return request<ReplyItem[]>('/messages/' + messageId + '/replies');
+}
+
+export function postReply(messageId: number, nickname: string, content: string) {
+  return request<ReplyItem>('/messages/' + messageId + '/replies', {
+    method: 'POST',
+    body: JSON.stringify({ nickname, content }),
+  });
+}
+
+// Message likes
+export function likeMessage(messageId: number) {
+  return request<{ ok: boolean; alreadyLiked?: boolean; likeCount: number }>('/messages/' + messageId + '/like', { method: 'POST' });
 }

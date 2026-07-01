@@ -1,9 +1,9 @@
 <template>
-  <section class="stats-section" ref="sectionRef">
+  <section class="stats-section">
     <div class="max-w-5xl mx-auto px-4">
       <div class="section-header">
         <div>
-          <h2 class="section-title">📊 作者数据</h2>
+          <h2 class="section-title">📊 作者の秘密数据</h2>
           <p class="section-subtitle">30周运营数据可视化</p>
         </div>
         <button v-if="authStore.isAuthor" @click="showForm = !showForm" class="btn-primary">
@@ -52,15 +52,14 @@
           <button @click="submitStats" :disabled="submitting" class="btn-primary btn-sm">
             {{ submitting ? '保存中...' : '保存数据' }}
           </button>
-          <button v-if="editingId" @click="resetForm" class="btn-ghost">取消编辑</button>
+          <button v-if="editingId" @click="resetForm" class="btn-ghost">取消改</button>
           <p v-if="formError" class="form-msg form-msg-err">{{ formError }}</p>
           <p v-if="formOk" class="form-msg form-msg-ok">{{ formOk }}</p>
         </div>
       </div>
 
-      <!-- Charts -->
+      <!-- Loading / Empty -->
       <div v-if="loading" class="loading-msg">加载数据中...</div>
-
       <div v-else-if="sortedStats.length === 0" class="empty-state glass-card">
         <p class="empty-icon">📊</p>
         <p>还没有数据，等待作者添加~</p>
@@ -77,12 +76,6 @@
         <div class="glass-card chart-card">
           <h3 class="chart-title">📈 点赞数 & 聊天用户数 折线趋势</h3>
           <div ref="chart2Ref" class="chart-box"></div>
-        </div>
-
-        <!-- Chart 3: Ring chart - Three-phase views -->
-        <div class="glass-card chart-card">
-          <h3 class="chart-title">🥧 三阶段总浏览量占比</h3>
-          <div ref="chart3Ref" class="chart-box chart-box-sm"></div>
         </div>
 
         <!-- Data Table -->
@@ -114,7 +107,7 @@
                   <td>{{ s.content || '-' }}</td>
                   <td>{{ s.topWork || '-' }}</td>
                   <td v-if="authStore.isAuthor">
-                    <button @click="editRow(s)" class="btn-ghost btn-xs">编辑</button>
+                    <button @click="editRow(s)" class="btn-ghost btn-xs">改</button>
                   </td>
                 </tr>
               </tbody>
@@ -157,11 +150,9 @@ const sortedStats = computed(() => [...stats.value].sort((a, b) => a.week - b.we
 
 const chart1Ref = ref<HTMLElement | null>(null)
 const chart2Ref = ref<HTMLElement | null>(null)
-const chart3Ref = ref<HTMLElement | null>(null)
 
 let chart1: echarts.ECharts | null = null
 let chart2: echarts.ECharts | null = null
-let chart3: echarts.ECharts | null = null
 
 function formatNum(n: number): string {
   if (n >= 10000) return (n / 10000).toFixed(1) + '万'
@@ -173,14 +164,11 @@ function getChartColors() {
   const isDark = themeStore.currentTheme === 'cyberpunk'
   return {
     text: isDark ? '#A0A0B0' : '#6E6E73',
-    textStrong: isDark ? '#E0E0E0' : '#1D1D1F',
     c1: isDark ? '#00FF88' : '#86C440',
     c2: isDark ? '#FF00FF' : '#8B5CF6',
     c3: isDark ? '#00FFFF' : '#3B82F6',
     c4: isDark ? '#FFD700' : '#F59E0B',
-    c5: isDark ? '#FF4466' : '#EF4444',
     split: isDark ? 'rgba(0,255,136,0.1)' : 'rgba(0,0,0,0.06)',
-    bg: isDark ? '#12121A' : '#FFFFFF',
   }
 }
 
@@ -226,32 +214,6 @@ function renderCharts() {
         { name: '点赞数', type: 'line', smooth: true, data: likes, itemStyle: { color: cols.c3 }, lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 4 },
         { name: '聊天用户数', type: 'line', smooth: true, data: chatUsers, itemStyle: { color: cols.c4 }, lineStyle: { width: 2 }, symbol: 'circle', symbolSize: 4 },
       ],
-    }, true)
-  }
-
-  // Chart 3: Donut - Three-phase views
-  if (chart3Ref.value && data.length > 0) {
-    if (!chart3) chart3 = echarts.init(chart3Ref.value)
-    const total = data.length
-    const third = Math.ceil(total / 3)
-    const p1 = data.slice(0, third)
-    const p2 = data.slice(third, third * 2)
-    const p3 = data.slice(third * 2)
-    const sum1 = p1.reduce((s, d) => s + d.views, 0)
-    const sum2 = p2.reduce((s, d) => s + d.views, 0)
-    const sum3 = p3.reduce((s, d) => s + d.views, 0)
-    chart3.setOption({
-      tooltip: { trigger: 'item', formatter: '{b}: {c}万 ({d}%)' },
-      legend: { orient: 'vertical', left: 'left', textStyle: { color: cols.text } },
-      series: [{
-        type: 'pie', radius: ['40%', '70%'], center: ['55%', '55%'],
-        data: [
-          { value: Math.round(sum1 * 10) / 10, name: '前期 (W1-W' + third + ')', itemStyle: { color: cols.c1 } },
-          { value: Math.round(sum2 * 10) / 10, name: '中期 (W' + (third+1) + '-W' + (third*2) + ')', itemStyle: { color: cols.c2 } },
-          { value: Math.round(sum3 * 10) / 10, name: '后期 (W' + (third*2+1) + '-W' + total + ')', itemStyle: { color: cols.c3 } },
-        ].filter(d => d.value > 0),
-        label: { formatter: '{b}\n{d}%', fontSize: 11, color: cols.text },
-      }],
     }, true)
   }
 }
@@ -319,7 +281,6 @@ async function submitStats() {
 watch(() => themeStore.currentTheme, () => {
   if (chart1) { chart1.dispose(); chart1 = null }
   if (chart2) { chart2.dispose(); chart2 = null }
-  if (chart3) { chart3.dispose(); chart3 = null }
   nextTick(renderCharts)
 })
 
@@ -330,7 +291,7 @@ onMounted(async () => {
   await nextTick()
   renderCharts()
   window.addEventListener('resize', () => {
-    chart1?.resize(); chart2?.resize(); chart3?.resize()
+    chart1?.resize(); chart2?.resize()
   })
 })
 </script>
@@ -359,7 +320,6 @@ onMounted(async () => {
 .chart-card { padding: 20px; }
 .chart-title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); font-family: var(--font-heading); margin-bottom: 12px; }
 .chart-box { width: 100%; height: 380px; }
-.chart-box-sm { height: 340px; }
 
 .btn-primary {
   padding: 10px 22px; border-radius: var(--card-radius-sm); font-size: 0.85rem; font-weight: 500;
@@ -373,17 +333,27 @@ onMounted(async () => {
 .btn-ghost:hover { border-color: var(--accent); color: var(--text-primary); }
 .btn-xs { padding: 4px 10px; font-size: 0.72rem; }
 
-.table-wrap { overflow-x: auto; }
-.stats-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-.stats-table th {
-  padding: 10px 10px; text-align: left; font-weight: 600; white-space: nowrap;
+.table-wrap { overflow-x: auto; border-radius: var(--card-radius-sm); }
+.stats-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: 0.78rem;
+}
+.stats-table thead th {
+  position: sticky; top: 0; z-index: 2;
+  padding: 10px 12px; text-align: left; font-weight: 600; white-space: nowrap;
+  font-family: var(--font-heading); font-size: 0.68rem;
+  letter-spacing: 0.06em; text-transform: uppercase;
   background: var(--surface-hover); color: var(--text-primary);
-  border-bottom: 2px solid var(--border);
+  border-bottom: 2px solid var(--border-strong);
 }
 .stats-table td {
-  padding: 7px 10px; border-bottom: 1px solid var(--border); color: var(--text-secondary);
+  padding: 8px 12px; border-bottom: 1px solid var(--border);
+  color: var(--text-secondary); font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums; font-size: 0.76rem;
 }
-.stats-table tr:hover td { background: var(--surface-hover); }
+.stats-table tbody tr { transition: background 0.15s ease; }
+.stats-table tbody tr:nth-child(even) td { background: var(--card-bg-alt); }
+.stats-table tbody tr:hover td { background: var(--surface-hover); }
 .font-mono { font-family: var(--font-mono); }
 .loading-msg { text-align: center; padding: 3rem; font-size: 0.85rem; color: var(--text-muted); }
 .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); }

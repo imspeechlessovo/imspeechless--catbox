@@ -13,7 +13,8 @@ interface Data {
   likes: LikeRow[];
   downloads: DownloadRow[];
   stats: StatsRow[];
-  stats: StatsRow[];
+  replies: ReplyRow[];
+  messageLikes: MessageLikeRow[];
   _idCounter: number;
 }
 
@@ -28,10 +29,12 @@ export interface VisitorSessionRow {
 export interface MessageRow {
   id: number; nickname: string; content: string; visible: number; pinned: number;
   ip_hash: string; user_agent: string | null; created_at: string; updated_at: string;
+  likeCount?: number; replyCount?: number;
 }
 export interface AuthorMessageRow {
   id: number; title: string; content: string; pinned: number; visible: number;
   created_at: string; updated_at: string;
+  replyCount?: number; likeCount?: number;
 }
 export interface AuthorRow {
   id: number; username: string; password_hash: string; display_name: string;
@@ -55,6 +58,22 @@ export interface StatsRow {
   content: string; topWork: string;
   created_at: string; updated_at: string;
 }
+export interface ReplyRow {
+  id: number; message_id: number; nickname: string; content: string;
+  ip_hash: string; user_agent: string | null; created_at: string;
+}
+export interface MessageLikeRow {
+  id: number; message_id: number; ip_hash: string; created_at: string;
+}
+
+export interface ReplyRow {
+  id: number; message_id: number; nickname: string; content: string;
+  ip_hash: string; user_agent: string | null; created_at: string;
+}
+export interface MessageLikeRow {
+  id: number; message_id: number; ip_hash: string; created_at: string;
+}
+
 
 export interface StatsRow {
   id: number; week: number; dateRange: string;
@@ -68,7 +87,7 @@ export interface StatsRow {
 function emptyData(): Data {
   return {
     questions: [], visitorSessions: [], messages: [], authorMessages: [],
-    authors: [], cards: [], likes: [], downloads: [], stats: [], stats: [],
+    authors: [], cards: [], likes: [], downloads: [], stats: [], replies: [], messageLikes: [], replies: [], messageLikes: [], stats: [],
     _idCounter: 1,
   };
 }

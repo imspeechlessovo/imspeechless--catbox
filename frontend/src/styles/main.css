@@ -367,6 +367,187 @@
 .corner-br { bottom: 6%; right: 4%; border-bottom-width: 1px; border-right-width: 1px; animation: corner-glow 4s ease-in-out infinite 3s; }
 
 /* ---- Utility classes ---- */
+
+/* ===== Liquid Glass ===== */
+.glass-card {
+  background: var(--card-bg);
+  backdrop-filter: var(--card-blur);
+  -webkit-backdrop-filter: var(--card-blur);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow), inset 0 1px 0 rgba(255,255,255,0.08);
+  transition: all var(--transition-speed) ease;
+  position: relative;
+}
+.glass-card::before {
+  content: "";
+  position: absolute; inset: 0; border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 50%, rgba(255,255,255,0.01) 100%);
+  pointer-events: none; z-index: 0;
+}
+.glass-card:hover {
+  background: var(--card-bg-hover);
+  border-color: var(--accent-glow);
+  transform: translateY(-3px);
+  box-shadow: var(--card-shadow-hover), inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+
+
+/* ============================================================
+   RESPONSIVE - Mobile first breakpoints
+   ============================================================ */
+
+/* Tablet and below: 768px */
+@media (max-width: 768px) {
+  /* Navigation buttons */
+  .nav-btn {
+    padding: 6px 14px !important;
+    font-size: 0.75rem !important;
+    white-space: nowrap;
+  }
+  .nav-badge, .nav-badge-accent {
+    font-size: 0.7rem !important;
+    padding: 4px 10px !important;
+  }
+
+  /* Section titles */
+  .section-title {
+    font-size: 1.1rem !important;
+  }
+  .section-subtitle {
+    font-size: 0.75rem !important;
+  }
+
+  /* Countdown section */
+  .countdown-section {
+    min-height: auto !important;
+    padding: 2rem 0.5rem !important;
+  }
+
+  /* Rankings */
+  .rank-row {
+    padding: 12px !important;
+  }
+  .rank-row-name {
+    font-size: 0.85rem !important;
+  }
+  .rank-row-intro {
+    font-size: 0.7rem !important;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .rank-row-tag {
+    font-size: 0.6rem !important;
+    padding: 1px 8px !important;
+  }
+  .rank-row-thumb {
+    width: 44px !important;
+    height: 44px !important;
+    flex-shrink: 0;
+  }
+  .rank-pos {
+    min-width: 28px !important;
+  }
+
+  /* Message wall */
+  .post-form {
+    flex-direction: column !important;
+    padding: 14px !important;
+  }
+  .post-form-avatar {
+    display: none;
+  }
+
+  /* Stats section */
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Back to top */
+  .back-top-btn {
+    bottom: 20px !important;
+    right: 16px !important;
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 1.1rem !important;
+  }
+
+  /* Progress bar */
+  .scroll-progress {
+    height: 2px !important;
+  }
+
+  /* Tabs */
+  .tabs-row {
+    gap: 4px !important;
+  }
+  .tab-btn {
+    padding: 6px 12px !important;
+    font-size: 0.7rem !important;
+  }
+
+  /* Footer */
+  .site-footer {
+    padding: 1.5rem !important;
+    font-size: 0.65rem !important;
+  }
+
+  /* Glass card inner spacing */
+  .chart-card {
+    padding: 14px !important;
+  }
+  .chart-box {
+    height: 280px !important;
+  }
+}
+
+/* Small phone: 480px */
+@media (max-width: 480px) {
+  .rank-row {
+    gap: 8px !important;
+  }
+  .rank-row-thumb {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .rank-row-tags {
+    display: none;
+  }
+  .rank-like-area {
+    min-width: 44px !important;
+  }
+
+  .like-heart {
+    font-size: 1.1rem !important;
+  }
+
+  .section-header {
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: flex-start !important;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .stats-form {
+    padding: 14px !important;
+  }
+
+  .pagination {
+    gap: 4px !important;
+  }
+  .page-btn {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 0.7rem !important;
+  }
+}
+
 @layer utilities {
   .glass {
     background: var(--card-bg);

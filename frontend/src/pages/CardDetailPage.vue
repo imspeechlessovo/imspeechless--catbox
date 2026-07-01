@@ -48,7 +48,7 @@
                 borderColor: 'var(--border)',
                 borderRadius: 'var(--card-radius)',
               }">
-              ⬇ 下载原图
+              ⬇ 偷图
             </a>
           </div>
 

@@ -1,5 +1,20 @@
 <template>
   <div class="min-h-screen">
+    <!-- Cursor particles background -->
+    <CursorParticles />
+
+    <!-- Scroll progress bar -->
+    <div class="scroll-progress" :style="{ width: scrollProgress + '%' }"></div>
+
+    <!-- Back to top -->
+    <button v-show="showBackTop" @click="scrollToTop" class="back-top-btn" title="回到顶部">⬆</button>
+
+    <!-- Floating hearts container -->
+    <div class="floating-hearts" ref="heartsContainer"></div>
+
+    <!-- EmojiPicker overlay -->
+    <EmojiPicker :visible="showEmoji" @close="showEmoji = false" @pick="insertEmoji" />
+
     <!-- ======== Top-right login buttons ======== -->
     <div class="fixed top-5 right-5 z-50 flex items-center gap-2.5">
       <template v-if="!authStore.isAuthor && !authStore.isVisitorPassed">
@@ -14,7 +29,7 @@
     </div>
 
     <!-- ======== SECTION 1: Countdown ======== -->
-    <section class="countdown-section">
+    <section class="countdown-section reveal-section" data-reveal>
       <div class="countdown-inner">
         <CountdownDisplay v-if="countdownData" :release-time-str="countdownData.releaseTime" :server-time-str="countdownData.serverTime" />
         <CountdownDisplay v-else />
@@ -26,7 +41,7 @@
     </section>
 
     <!-- ======== SECTION 2: Rankings (single column, one card per row) ======== -->
-    <section class="ranking-section">
+    <section class="ranking-section reveal-section" data-reveal>
       <div class="max-w-3xl mx-auto px-4">
         <div class="section-header">
           <div>
@@ -92,7 +107,7 @@
     </section>
 
     <!-- ======== SECTION 3: Message Wall ======== -->
-    <section class="message-section">
+    <section class="message-section reveal-section" data-reveal>
       <div class="max-w-2xl mx-auto px-4">
         <div class="section-header">
           <div>
@@ -104,10 +119,11 @@
         <div v-if="canPost" class="post-form animate-slide-up">
           <div class="post-form-avatar">💬</div>
           <div class="post-form-body">
-            <input v-model="msgNickname" type="text" maxlength="20" class="post-input" placeholder="你的昵称" />
+            <div class="post-input-row"><input v-model="msgNickname" type="text" maxlength="20" class="post-input" placeholder="你的昵称" /><button @click="showEmoji = !showEmoji" class="emoji-toggle" title="表情">😊</button></div>
             <textarea v-model="msgContent" rows="2" maxlength="500" class="post-textarea" placeholder="说点什么吧..."></textarea>
             <div class="post-form-footer">
               <p v-if="msgError" class="post-error">{{ msgError }}</p>
+              <p v-if="msgSuccess" class="post-success">{{ msgSuccess }}</p>
               <button @click="submitMessage" :disabled="submittingMsg" class="btn-primary btn-sm">{{ submittingMsg ? '发送中...' : '📨 留言' }}</button>
             </div>
           </div>
@@ -119,13 +135,13 @@
 
         <div v-if="loadingMsgs" class="loading-msg">加载中...</div>
         <div v-else class="messages-list">
-          <MessageCard v-for="msg in allMessages" :key="msg.type + '-' + msg.id" :message="msg" :isAuthor="authStore.isAuthor" @pin="handlePin" @delete="handleDelete" />
+          <MessageCard v-for="msg in allMessages" :key="msg.type + '-' + msg.id" :msg="msg" :isAuthor="authStore.isAuthor" @pin="handlePin" @delete="handleDelete" />
         </div>
       </div>
     </section>
 
     <!-- ======== Author tools ======== -->
-    <section v-if="authStore.isAuthor" class="author-section">
+    <section v-if="authStore.isAuthor" class="author-section reveal-section" data-reveal>
       <div class="max-w-2xl mx-auto px-4">
         <h2 class="section-title mb-5">🛠️ 作者工具箱</h2>
         <div class="author-tools">
@@ -142,11 +158,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import CountdownDisplay from '../components/CountdownDisplay.vue'
 import MessageCard from '../components/MessageCard.vue'
 import StatsSection from '../components/StatsSection.vue'
+import EmojiPicker from '../components/EmojiPicker.vue'
+import CursorParticles from '../components/CursorParticles.vue'
+import { playPop, playDing } from '../utils/sound'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import {
@@ -177,6 +196,27 @@ const canPost = computed(() => authStore.isAuthor || authStore.isVisitorPassed)
 const allMessages = computed(() => [...authorMessages.value, ...visitorMessages.value])
 const likingCard = ref<number | null>(null)
 const likePopId = ref<number | null>(null)
+const showEmoji = ref(false)
+const msgSuccess = ref('')
+const showBackTop = ref(false)
+const scrollProgress = ref(0)
+const heartsContainer = ref<HTMLElement | null>(null)
+let scrollObserver: IntersectionObserver | null = null
+
+function insertEmoji(emoji: string) {
+  msgContent.value += emoji
+}
+
+function spawnHeart(x: number, y: number) {
+  const el = document.createElement('span')
+  el.className = 'floating-heart'
+  el.textContent = '❤️'
+  el.style.left = x + 'px'
+  el.style.top = y + 'px'
+  el.style.animationDuration = (0.8 + Math.random() * 0.6) + 's'
+  heartsContainer.value?.appendChild(el)
+  setTimeout(() => el.remove(), 1400)
+}
 
 function formatLikeCount(n: number): string {
   if (n >= 10000) return (n / 10000).toFixed(1) + 'w'
@@ -189,6 +229,34 @@ onMounted(async () => {
   try { countdownData.value = await getCountdown() } catch {}
   await loadCards()
   await loadMessages()
+
+  window.addEventListener('scroll', onScroll, { passive: true })
+
+  scrollObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('revealed')
+      }
+    })
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' })
+
+  document.querySelectorAll('[data-reveal]').forEach(el => scrollObserver!.observe(el))
+})
+
+function onScroll() {
+  const scrollY = window.scrollY
+  const docH = document.documentElement.scrollHeight - window.innerHeight
+  showBackTop.value = scrollY > 400
+  scrollProgress.value = docH > 0 ? Math.min((scrollY / docH) * 100, 100) : 0
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+  scrollObserver?.disconnect()
 })
 
 async function loadCards() {
@@ -196,13 +264,23 @@ async function loadCards() {
   try { const data = await getCards(rank.value, page.value, 20); items.value = data.items; totalPages.value = Math.ceil(data.total / data.limit) }
   catch { items.value = [] }
   loadingCards.value = false
+  setTimeout(() => {
+    document.querySelectorAll('.rank-row[data-reveal]:not(.revealed)').forEach(el => scrollObserver?.observe(el))
+  }, 100)
 }
 
 async function handleCardLike(item: CardListItem) {
   if (likingCard.value) return
   likingCard.value = item.id
   likePopId.value = item.id
+  playPop()
   setTimeout(() => { likePopId.value = null }, 400)
+  const btn = document.activeElement
+  if (btn) {
+    const rect = (btn as HTMLElement).getBoundingClientRect()
+    spawnHeart(rect.left + rect.width / 2, rect.top)
+    spawnHeart(rect.left + rect.width / 3, rect.top + 10)
+  }
   try {
     const result = await likeCard(item.id)
     item.totalLikes = result.totalLikes
@@ -224,6 +302,7 @@ async function loadMessages() {
 
 async function submitMessage() {
   msgError.value = ''
+  msgSuccess.value = ''
   if (!msgNickname.value.trim() || !msgContent.value.trim()) return
   submittingMsg.value = true
   try { const msg = await postMessage(msgNickname.value.trim(), msgContent.value.trim()); visitorMessages.value.unshift(msg); msgNickname.value = ''; msgContent.value = '' }
@@ -390,6 +469,70 @@ async function handleLogout() {
 .author-tools { display: flex; gap: 14px; flex-wrap: wrap; }
 .tool-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 32px; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--card-radius); color: var(--text-primary); text-decoration: none; font-size: 0.85rem; font-weight: 500; transition: all 0.2s ease; cursor: pointer; }
 .tool-card:hover { border-color: var(--accent-glow); box-shadow: var(--card-shadow-hover); transform: translateY(-2px); }
+
+
+/* ====== SCROLL PROGRESS ====== */
+.scroll-progress {
+  position: fixed; top: 0; left: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  z-index: 9999; transition: width 0.1s linear;
+}
+
+/* ====== BACK TO TOP ====== */
+.back-top-btn {
+  position: fixed; bottom: 28px; right: 24px; z-index: 9998;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--card-bg); border: 1px solid var(--border);
+  color: var(--text-primary); font-size: 1.2rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--card-shadow); transition: all 0.25s ease;
+}
+.back-top-btn:hover {
+  border-color: var(--accent); box-shadow: 0 0 16px var(--accent-glow);
+  transform: translateY(-2px);
+}
+
+/* ====== FLOATING HEARTS ====== */
+.floating-hearts { position: fixed; inset: 0; z-index: 9997; pointer-events: none; }
+.floating-heart {
+  position: absolute;
+  font-size: 1.3rem;
+  animation: floatUp 1.2s ease-out forwards;
+  pointer-events: none;
+  opacity: 0;
+}
+@keyframes floatUp {
+  0% { transform: translateY(0) scale(0.5); opacity: 1; }
+  40% { transform: translateY(-30px) scale(1.2); opacity: 1; }
+  100% { transform: translateY(-80px) scale(0.6); opacity: 0; }
+}
+
+/* ====== SCROLL REVEAL ====== */
+.reveal-section {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.reveal-section.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ====== EMOJI TOGGLE ====== */
+.post-input-row { display: flex; gap: 8px; }
+.emoji-toggle {
+  background: var(--surface-hover); border: 1px solid var(--border); border-radius: 10px;
+  padding: 8px 12px; cursor: pointer; font-size: 1.1rem; transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.emoji-toggle:hover { border-color: var(--accent); background: var(--accent-glow); }
+
+/* ====== SUCCESS MSG ====== */
+.post-success { font-size: 0.8rem; color: var(--accent); margin-right: auto; animation: fadeOut 2s ease forwards; }
+@keyframes fadeOut {
+  0%, 50% { opacity: 1; }
+  100% { opacity: 0; }
+}
 
 .site-footer { text-align: center; padding: 2rem; font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid var(--border); }
 </style>

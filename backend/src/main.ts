@@ -11,6 +11,7 @@ import { messagesRouter } from './modules/messages';
 import { cardsRouter } from './modules/cards';
 import { authorRouter } from './modules/author';
 import { authRouter } from './modules/auth';
+import { statsRouter } from './modules/stats';
 
 console.log('🔌 Initializing database...');
 initDb();
@@ -30,6 +31,7 @@ app.use('/api/messages', messagesRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/author', authorRouter);
 app.use('/api/cards', cardsRouter);
+app.use('/api/stats', statsRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, serverTime: new Date().toISOString() });

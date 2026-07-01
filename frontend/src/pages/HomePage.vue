@@ -135,6 +135,8 @@
       </div>
     </section>
 
+    <StatsSection />
+
     <footer class="site-footer">🥑 niuyouguo &copy; 2026 — 这不是结束，只是冷却时间</footer>
   </div>
 </template>
@@ -144,6 +146,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import CountdownDisplay from '../components/CountdownDisplay.vue'
 import MessageCard from '../components/MessageCard.vue'
+import StatsSection from '../components/StatsSection.vue'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import {

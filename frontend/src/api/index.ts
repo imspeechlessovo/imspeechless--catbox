@@ -245,3 +245,25 @@ export function updateCard(id: number, data: Record<string, unknown>) {
 export function deleteCard(id: number) {
   return request<{ ok: boolean }>('/cards/' + id, { method: 'DELETE' });
 }
+// ===== Stats / Author Data =====
+export interface StatsRow {
+  id: number; week: number; dateRange: string;
+  views: number; messages: number;
+  likes: number; chatUsers: number;
+  content: string; topWork: string;
+  createdAt: string; updatedAt: string;
+}
+
+export function getStats() {
+  return request<StatsRow[]>('/stats');
+}
+
+export function saveStats(data: {
+  week: number; dateRange: string; views: number; messages: number;
+  likes: number; chatUsers: number; content?: string; topWork?: string;
+}) {
+  return request<StatsRow>('/stats', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

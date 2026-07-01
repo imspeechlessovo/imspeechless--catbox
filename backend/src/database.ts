@@ -12,6 +12,8 @@ interface Data {
   cards: CardRow[];
   likes: LikeRow[];
   downloads: DownloadRow[];
+  stats: StatsRow[];
+  stats: StatsRow[];
   _idCounter: number;
 }
 
@@ -46,11 +48,27 @@ export interface LikeRow {
 export interface DownloadRow {
   id: number; card_id: number; ip_hash: string; created_at: string;
 }
+export interface StatsRow {
+  id: number; week: number; dateRange: string;
+  views: number; messages: number;
+  likes: number; chatUsers: number;
+  content: string; topWork: string;
+  created_at: string; updated_at: string;
+}
+
+export interface StatsRow {
+  id: number; week: number; dateRange: string;
+  views: number; messages: number;
+  likes: number; chatUsers: number;
+  content: string; topWork: string;
+  created_at: string; updated_at: string;
+}
+
 
 function emptyData(): Data {
   return {
     questions: [], visitorSessions: [], messages: [], authorMessages: [],
-    authors: [], cards: [], likes: [], downloads: [],
+    authors: [], cards: [], likes: [], downloads: [], stats: [], stats: [],
     _idCounter: 1,
   };
 }
